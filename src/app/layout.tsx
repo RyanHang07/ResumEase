@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Resumedit - Simple Latex-Based Resume",
+  title: "ResumEase - Simple Latex-Based Resume Editor",
   description: "Build professional resumes with LaTeX quality, zero LaTeX knowledge required",
 };
 
