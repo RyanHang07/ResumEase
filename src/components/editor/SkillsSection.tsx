@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, ChevronDown, ChevronUp, Trash2, X, Plus } from 'lucide-react';
@@ -27,6 +27,10 @@ export const SkillsSection = ({
 }: SkillsSectionProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [focusedSkillsCategoryId, setFocusedSkillsCategoryId] = useState<string | null>(null);
+  const [focusedSkillsValue, setFocusedSkillsValue] = useState('');
+  const [pendingFocusCategoryId, setPendingFocusCategoryId] = useState<string | null>(null);
+  const categoryInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const {
     attributes,
@@ -60,17 +64,38 @@ export const SkillsSection = ({
   };
 
   const handleRemoveCategory = (categoryId: string) => {
+    const categories = section.categories ?? [];
+    const index = categories.findIndex((cat) => cat.id === categoryId);
+    const focusTargetId =
+      index > 0
+        ? categories[index - 1].id
+        : categories[index + 1]?.id ?? null;
+
     onUpdate({
-      categories: section.categories.filter((cat) => cat.id !== categoryId),
+      categories: categories.filter((cat) => cat.id !== categoryId),
     });
+
+    if (focusTargetId) setPendingFocusCategoryId(focusTargetId);
   };
 
-  const handleSkillsChange = (categoryId: string, value: string) => {
-    const skills = value
+  const handleSkillsFocus = (categoryId: string, currentSkills: string[]) => {
+    setFocusedSkillsCategoryId(categoryId);
+    setFocusedSkillsValue((currentSkills ?? []).join(', '));
+  };
+
+  const handleSkillsBlur = (categoryId: string) => {
+    if (focusedSkillsCategoryId !== categoryId) return;
+    const skills = focusedSkillsValue
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
     handleUpdateCategory(categoryId, { skills });
+    setFocusedSkillsCategoryId(null);
+  };
+
+  const getSkillsInputValue = (categoryId: string, skills: string[]) => {
+    if (focusedSkillsCategoryId === categoryId) return focusedSkillsValue;
+    return (skills ?? []).join(', ');
   };
 
   const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -78,6 +103,15 @@ export const SkillsSection = ({
       setIsEditingName(false);
     }
   };
+
+  useEffect(() => {
+    if (!pendingFocusCategoryId) return;
+    const el = categoryInputRefs.current[pendingFocusCategoryId];
+    if (el) {
+      el.focus();
+    }
+    setPendingFocusCategoryId(null);
+  }, [pendingFocusCategoryId]);
 
   return (
     <Card ref={setNodeRef} style={style} className="overflow-hidden">
@@ -153,7 +187,10 @@ export const SkillsSection = ({
             >
               <div className="flex gap-2 items-center">
                 <Input
-                  value={category.categoryName}
+                  ref={(el) => {
+                    categoryInputRefs.current[category.id] = el;
+                  }}
+                  value={category.categoryName ?? ''}
                   onChange={(e) =>
                     handleUpdateCategory(category.id, {
                       categoryName: e.target.value,
@@ -182,10 +219,10 @@ export const SkillsSection = ({
                 </Label>
                 <Input
                   id={`skills-${category.id}`}
-                  value={category.skills.join(', ')}
-                  onChange={(e) =>
-                    handleSkillsChange(category.id, e.target.value)
-                  }
+                  value={getSkillsInputValue(category.id, category.skills)}
+                  onChange={(e) => setFocusedSkillsValue(e.target.value)}
+                  onFocus={() => handleSkillsFocus(category.id, category.skills)}
+                  onBlur={() => handleSkillsBlur(category.id)}
                   placeholder="e.g., Python, JavaScript, React"
                   aria-label="Skills list"
                   tabIndex={0}

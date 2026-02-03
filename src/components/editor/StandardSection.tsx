@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, ChevronDown, ChevronUp, Trash2, Plus } from 'lucide-react';
@@ -27,6 +27,7 @@ export const StandardSection = ({
 }: StandardSectionProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [pendingFocusEntryId, setPendingFocusEntryId] = useState<string | null>(null);
 
   const {
     attributes,
@@ -60,9 +61,16 @@ export const StandardSection = ({
   };
 
   const handleRemoveEntry = (entryId: string) => {
+    const entries = section.entries ?? [];
+    const index = entries.findIndex((entry) => entry.id === entryId);
+    const focusTargetId =
+      index > 0 ? entries[index - 1].id : entries[index + 1]?.id ?? null;
+
     onUpdate({
-      entries: section.entries.filter((entry) => entry.id !== entryId),
+      entries: entries.filter((entry) => entry.id !== entryId),
     });
+
+    if (focusTargetId) setPendingFocusEntryId(focusTargetId);
   };
 
   const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -70,6 +78,15 @@ export const StandardSection = ({
       setIsEditingName(false);
     }
   };
+
+  useEffect(() => {
+    if (!pendingFocusEntryId) return;
+    const el = document.getElementById(`title-${pendingFocusEntryId}`);
+    if (el && el instanceof HTMLInputElement) {
+      el.focus();
+    }
+    setPendingFocusEntryId(null);
+  }, [pendingFocusEntryId]);
 
   return (
     <Card ref={setNodeRef} style={style} className="overflow-hidden">
@@ -138,7 +155,7 @@ export const StandardSection = ({
 
       {!isCollapsed && (
         <CardContent className="p-4 space-y-4">
-          {section.entries.map((entry, index) => (
+          {(section.entries ?? []).map((entry, index) => (
             <StandardEntry
               key={entry.id}
               entry={entry}
