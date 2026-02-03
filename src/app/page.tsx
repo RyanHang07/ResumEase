@@ -12,7 +12,6 @@ import { SavedResumesPanel } from '@/components/layout/SavedResumesPanel';
 import { Toolbar } from '@/components/layout/Toolbar';
 import { exportResumeAsJson, importResumeFromJson } from '@/lib/storage';
 import { downloadLatexSource } from '@/lib/latex-generator';
-import { getSampleDataForTemplate } from '@/lib/sampleData';
 import { Section, Resume } from '@/types/resume';
 import { useState } from 'react';
 
@@ -30,7 +29,6 @@ export default function HomePage() {
     importResume,
     resetResume,
     setTemplate,
-    loadSampleData,
   } = useResumeStore();
 
   const { pdfUrl, isCompiling, error, downloadPdf, compile } = useLatexCompile(resume, currentTemplate);
@@ -71,11 +69,8 @@ export default function HomePage() {
   const handleSelectTemplate = useCallback(
     (templateId: string) => {
       setTemplate(templateId);
-      // Load sample data for the selected template
-      const sampleData = getSampleDataForTemplate(templateId);
-      loadSampleData(sampleData);
     },
-    [setTemplate, loadSampleData]
+    [setTemplate]
   );
 
   const handleLoadSavedResume = useCallback(
