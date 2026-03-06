@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useResumeStore } from '@/store/resumeStore';
 import { useLatexCompile } from '@/hooks/useLatexCompile';
 import { useAutoSave } from '@/hooks/useAutoSave';
@@ -12,11 +12,12 @@ import { SavedResumesPanel } from '@/components/layout/SavedResumesPanel';
 import { Toolbar } from '@/components/layout/Toolbar';
 import { exportResumeAsJson, importResumeFromJson } from '@/lib/storage';
 import { downloadLatexSource } from '@/lib/latex-generator';
+import { downloadDocx } from '@/lib/docx-generator';
 import { Section, Resume } from '@/types/resume';
-import { useState } from 'react';
 
 export default function HomePage() {
   const [activeView, setActiveView] = useState<SidebarView>('editor');
+  const [isDocxExporting, setIsDocxExporting] = useState(false);
 
   const {
     resume,
@@ -41,6 +42,18 @@ export default function HomePage() {
   const handleExportLatex = useCallback(() => {
     downloadLatexSource(resume, currentTemplate);
   }, [resume, currentTemplate]);
+
+  const handleExportDocx = useCallback(async () => {
+    setIsDocxExporting(true);
+    try {
+      await downloadDocx(resume);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Export failed';
+      alert(message);
+    } finally {
+      setIsDocxExporting(false);
+    }
+  }, [resume]);
 
   const handleImport = useCallback(
     async (file: File) => {
@@ -87,10 +100,12 @@ export default function HomePage() {
       <Toolbar
         onExportJson={handleExportJson}
         onExportLatex={handleExportLatex}
+        onExportDocx={handleExportDocx}
         onDownloadPdf={downloadPdf}
         onImport={handleImport}
         onClearAll={handleClearAll}
         isPdfReady={!!pdfUrl && !isCompiling}
+        isDocxExporting={isDocxExporting}
       />
       <div className="flex flex-1 overflow-hidden">
         {/* Collapsible Sidebar */}

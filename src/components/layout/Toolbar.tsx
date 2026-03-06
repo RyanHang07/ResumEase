@@ -9,6 +9,7 @@ import {
   Trash2,
   FileCode,
   FileDown,
+  FileText,
 } from 'lucide-react';
 import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
@@ -33,19 +34,23 @@ import {
 interface ToolbarProps {
   onExportJson: () => void;
   onExportLatex: () => void;
+  onExportDocx: () => void;
   onDownloadPdf: () => void;
   onImport: (file: File) => void;
   onClearAll: () => void;
   isPdfReady: boolean;
+  isDocxExporting?: boolean;
 }
 
 export const Toolbar = ({
   onExportJson,
   onExportLatex,
+  onExportDocx,
   onDownloadPdf,
   onImport,
   onClearAll,
   isPdfReady,
+  isDocxExporting = false,
 }: ToolbarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -101,6 +106,23 @@ export const Toolbar = ({
               </div>
               <span className="text-xs text-muted-foreground ml-6">
                 Download your compiled resume
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={onExportDocx}
+              disabled={isDocxExporting}
+              className="cursor-pointer flex flex-col items-start gap-1"
+              aria-label="Export as DOCX"
+            >
+              <div className="flex items-center">
+                <FileText className="h-4 w-4 mr-2" />
+                <span>{isDocxExporting ? 'Exporting…' : 'Export DOCX'}</span>
+              </div>
+              <span className="text-xs text-muted-foreground ml-6">
+                Download as Word document
+              </span>
+              <span className="text-xs text-destructive ml-6 mt-1 block">
+                The .docx uses a Compact-style layout only; template selection affects the PDF only.
               </span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
