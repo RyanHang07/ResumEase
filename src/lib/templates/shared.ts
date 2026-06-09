@@ -1,5 +1,14 @@
 import { Header } from '@/types/resume';
 
+export type CanonicalSectionType =
+  | 'summary'
+  | 'experience'
+  | 'education'
+  | 'projects'
+  | 'skills'
+  | 'certifications'
+  | 'awards';
+
 // ================================
 // CREDIT INFO - Edit your details here
 // ================================
@@ -9,6 +18,19 @@ export const AUTHOR_CREDIT = {
   projectName: 'ResumEase',
 };
 // ================================
+
+export const ATS_LATEX_PREAMBLE = `\\input{glyphtounicode}
+\\pdfgentounicode=1`;
+
+const SECTION_ALIASES: Record<CanonicalSectionType, string[]> = {
+  summary: ['summary', 'professional summary', 'profile', 'objective'],
+  experience: ['experience', 'work experience', 'professional experience', 'employment'],
+  education: ['education', 'academic background'],
+  projects: ['projects', 'personal projects', 'technical projects', 'portfolio'],
+  skills: ['skills', 'technical skills', 'core skills', 'competencies'],
+  certifications: ['certifications', 'licenses', 'credentials'],
+  awards: ['awards', 'honors', 'achievements'],
+};
 
 export const escapeLatex = (text: string): string => {
   if (!text) return '';
@@ -25,6 +47,22 @@ export const escapeLatex = (text: string): string => {
     .replace(/~/g, '\\textasciitilde{}')
     .replace(/\^/g, '\\textasciicircum{}');
 };
+
+export const getAtsLatexPreamble = (): string => ATS_LATEX_PREAMBLE;
+
+export const normalizeSectionName = (sectionName: string): CanonicalSectionType | null => {
+  const normalized = sectionName.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const match = Object.entries(SECTION_ALIASES).find(([, aliases]) =>
+    aliases.some((alias) => normalized === alias || normalized.includes(alias))
+  );
+
+  return (match?.[0] as CanonicalSectionType | undefined) ?? null;
+};
+
+export const isAtsStandardSectionName = (sectionName: string): boolean =>
+  normalizeSectionName(sectionName) !== null;
 
 export const extractUsername = (url: string, platform: string): string => {
   if (!url) return '';
@@ -90,5 +128,31 @@ export const getContactParts = (header: Header, useIcons: boolean, style: 'simpl
     }
   }
   
+  return parts;
+};
+
+export const getAtsContactParts = (header: Header, useIcons: boolean): string[] => {
+  const parts: string[] = [];
+
+  if (header.phone) {
+    const icon = useIcons ? '\\seticon{faPhone} ' : '';
+    parts.push(`${icon}${escapeLatex(header.phone)}`);
+  }
+  if (header.email) {
+    const icon = useIcons ? '\\seticon{faEnvelope} ' : '';
+    const email = escapeLatex(header.email);
+    parts.push(`${icon}\\href{mailto:${header.email}}{${email}}`);
+  }
+  if (header.linkedIn) {
+    const icon = useIcons ? '\\seticon{faLinkedin} ' : '';
+    const display = escapeLatex(extractUsername(header.linkedIn, 'linkedin'));
+    parts.push(`${icon}\\href{${header.linkedIn}}{${display}}`);
+  }
+  if (header.github) {
+    const icon = useIcons ? '\\seticon{faGithub} ' : '';
+    const display = escapeLatex(extractUsername(header.github, 'github'));
+    parts.push(`${icon}\\href{${header.github}}{${display}}`);
+  }
+
   return parts;
 };

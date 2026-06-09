@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { SavedResume } from '@/types/resume';
+import { Resume, SavedResume } from '@/types/resume';
 
 const MAX_RESUMES = 5;
+const MAX_RESUME_PAYLOAD_LENGTH = 100_000;
+const MAX_RESUME_NAME_LENGTH = 80;
+
+const isResumeLike = (value: unknown): value is Resume => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const resume = value as Record<string, unknown>;
+  return (
+    typeof resume.header === 'object' &&
+    resume.header !== null &&
+    Array.isArray(resume.sections)
+  );
+};
 
 export async function GET() {
   try {
@@ -46,12 +61,45 @@ export async function POST(request: NextRequest) {
     try {
       const client = await clerkClient();
       const user = await client.users.getUser(userId);
-      const body = await request.json();
-      const { name, templateId, data } = body;
+      const rawBody = await request.text();
 
-      if (!name || !templateId || !data) {
+      if (rawBody.length > MAX_RESUME_PAYLOAD_LENGTH) {
         return NextResponse.json(
-          { error: 'Missing required fields: name, templateId, data' },
+          { error: 'Resume payload is too large' },
+          { status: 413 }
+        );
+      }
+
+      let body: unknown;
+      try {
+        body = JSON.parse(rawBody);
+      } catch {
+        return NextResponse.json(
+          { error: 'Request body must be valid JSON' },
+          { status: 400 }
+        );
+      }
+
+      if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+        return NextResponse.json(
+          { error: 'Request body must be a JSON object' },
+          { status: 400 }
+        );
+      }
+
+      const payload = body as Record<string, unknown>;
+      const { name, templateId, data } = payload;
+
+      if (
+        typeof name !== 'string' ||
+        !name.trim() ||
+        name.length > MAX_RESUME_NAME_LENGTH ||
+        typeof templateId !== 'string' ||
+        !templateId.trim() ||
+        !isResumeLike(data)
+      ) {
+        return NextResponse.json(
+          { error: 'Invalid resume payload' },
           { status: 400 }
         );
       }
@@ -68,7 +116,7 @@ export async function POST(request: NextRequest) {
 
       const newResume: SavedResume = {
         id: crypto.randomUUID(),
-        name,
+        name: name.trim(),
         templateId,
         data,
         savedAt: new Date().toISOString(),

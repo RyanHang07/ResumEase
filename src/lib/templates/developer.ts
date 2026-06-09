@@ -1,5 +1,5 @@
 import { Resume } from '@/types/resume';
-import { escapeLatex, getCredits, extractUsername } from './shared';
+import { escapeLatex, getAtsLatexPreamble, getCredits, extractUsername } from './shared';
 
 export const generateDeveloperLatex = (resume: Resume): string => {
   const useIcons = resume.header.useIcons ?? true;
@@ -28,9 +28,9 @@ export const generateDeveloperLatex = (resume: Resume): string => {
       const cats = section.categories.filter(c => c.categoryName && c.skills.length > 0);
       if (cats.length === 0) return '';
       const lines = cats.map(c => {
-        const skills = c.skills.map(s => `\\fbox{\\small ${escapeLatex(s)}}`).join(' ');
-        return `\\texttt{${escapeLatex(c.categoryName)}} \\\\\n${skills}`;
-      }).join(' \\\\[8pt]\n');
+        const skills = c.skills.map(escapeLatex).join(', ');
+        return `\\texttt{${escapeLatex(c.categoryName)}:} ${skills}`;
+      }).join(' \\\\[4pt]\n');
       return `\\section*{${escapeLatex(section.sectionName)}}\n${lines}`;
     } else {
       if (section.entries.length === 0) return '';
@@ -55,16 +55,15 @@ export const generateDeveloperLatex = (resume: Resume): string => {
 \\usepackage[hidelinks]{hyperref}
 \\usepackage{xcolor}
 \\usepackage{titlesec}
-\\usepackage{fancybox}
 \\usepackage[scaled=0.85]{beramono}
 \\usepackage[T1]{fontenc}
 ${useIcons ? '\\usepackage{fontawesome5}' : ''}
+${getAtsLatexPreamble()}
 
 \\definecolor{headercolor}{RGB}{36,41,46}
 \\definecolor{accentcolor}{RGB}{0,122,204}
 \\pagestyle{empty}
 \\setlength{\\parindent}{0pt}
-\\setlength{\\fboxsep}{3pt}
 
 \\titleformat{\\section}{\\large\\bfseries\\color{headercolor}}{}{0em}{}[\\color{accentcolor}\\titlerule]
 \\titlespacing*{\\section}{0pt}{12pt}{6pt}

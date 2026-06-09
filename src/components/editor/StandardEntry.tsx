@@ -3,7 +3,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { X, Plus } from 'lucide-react';
+import { Trash2, Plus } from 'lucide-react';
 import { StandardEntry as StandardEntryType } from '@/types/resume';
 import { BulletPointInput } from './BulletPointInput';
 
@@ -38,23 +38,11 @@ export const StandardEntry = ({
   };
 
   return (
-    <div className="p-4 border rounded-lg space-y-4 bg-muted/30">
-      <div className="flex justify-between items-start gap-2">
-        <span className="text-sm font-medium text-muted-foreground">
-          Entry {entryIndex + 1}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onRemove}
-          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-          aria-label={`Remove entry ${entryIndex + 1}`}
-          tabIndex={0}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
+    <fieldset className="p-4 border rounded-lg space-y-4 bg-muted/30">
+      <legend className="text-base font-semibold text-foreground">
+        Entry {entryIndex + 1}
+      </legend>
+ 
       <div className="space-y-3">
         <div className="space-y-2">
           <Label htmlFor={`title-${entry.id}`}>Title</Label>
@@ -63,7 +51,6 @@ export const StandardEntry = ({
             value={entry.title}
             onChange={(e) => onUpdate({ title: e.target.value })}
             placeholder="e.g., Software Engineer, Project Name"
-            aria-label="Entry title"
             tabIndex={0}
           />
         </div>
@@ -75,7 +62,6 @@ export const StandardEntry = ({
             value={entry.organization || ''}
             onChange={(e) => onUpdate({ organization: e.target.value })}
             placeholder="e.g., Google Inc., Personal Project"
-            aria-label="Organization or location"
             tabIndex={0}
           />
         </div>
@@ -87,7 +73,6 @@ export const StandardEntry = ({
             value={entry.dateRange || ''}
             onChange={(e) => onUpdate({ dateRange: e.target.value })}
             placeholder="e.g., Jan 2023 - Present"
-            aria-label="Date range"
             tabIndex={0}
           />
         </div>
@@ -106,19 +91,32 @@ export const StandardEntry = ({
               />
             ))}
           </div>
-          <Button
-            onClick={handleAddBulletPoint}
-            variant="outline"
-            size="sm"
-            className="mt-2"
-            aria-label="Add bullet point"
+          <div className="flex flex-row items-center justify-between">
+            <Button
+              onClick={handleAddBulletPoint}
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              aria-label="Add bullet point"
+              tabIndex={0}
+            >
+              <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
+              Add Bullet Point
+            </Button>
+            <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRemove}
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            aria-label={`Remove entry ${entryIndex + 1}`}
             tabIndex={0}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Bullet Point
-          </Button>
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+          
         </div>
       </div>
-    </div>
+    </fieldset>
   );
 };

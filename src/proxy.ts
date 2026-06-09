@@ -1,20 +1,19 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/api/compile',
-]);
+const isPublicRoute = createRouteMatcher(['/', '/api/compile']);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Only protect routes if Clerk is configured
-  // If Clerk keys are missing, this will gracefully allow access
+  if (isPublicRoute(req)) return;
+
   try {
-    if (!isPublicRoute(req)) {
-      await auth.protect();
-    }
+    await auth.protect();
   } catch (error) {
-    // If Clerk is not configured, allow access (graceful degradation)
-    console.warn('Clerk middleware error (Clerk may not be configured):', error);
+    console.error('Clerk authentication failed:', error);
+    return NextResponse.json(
+      { error: 'Authentication is currently unavailable' },
+      { status: 503 }
+    );
   }
 });
 

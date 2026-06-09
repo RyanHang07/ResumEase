@@ -29,7 +29,8 @@ export const HeaderForm = ({ header, onChange }: HeaderFormProps) => {
             value={header.name}
             onChange={(e) => handleInputChange('name', e.target.value)}
             placeholder="John Doe"
-            aria-label="Full name"
+            required
+            aria-required="true"
             tabIndex={0}
           />
         </div>
@@ -42,7 +43,8 @@ export const HeaderForm = ({ header, onChange }: HeaderFormProps) => {
             value={header.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
             placeholder="john@example.com"
-            aria-label="Email address"
+            required
+            aria-required="true"
             tabIndex={0}
           />
         </div>
@@ -55,7 +57,6 @@ export const HeaderForm = ({ header, onChange }: HeaderFormProps) => {
             value={header.phone || ''}
             onChange={(e) => handleInputChange('phone', e.target.value)}
             placeholder="(123) 456-7890"
-            aria-label="Phone number"
             tabIndex={0}
           />
         </div>
@@ -68,7 +69,6 @@ export const HeaderForm = ({ header, onChange }: HeaderFormProps) => {
             value={header.linkedIn || ''}
             onChange={(e) => handleInputChange('linkedIn', e.target.value)}
             placeholder="https://linkedin.com/in/johndoe"
-            aria-label="LinkedIn URL"
             tabIndex={0}
           />
         </div>
@@ -81,7 +81,6 @@ export const HeaderForm = ({ header, onChange }: HeaderFormProps) => {
             value={header.github || ''}
             onChange={(e) => handleInputChange('github', e.target.value)}
             placeholder="https://github.com/johndoe"
-            aria-label="GitHub URL"
             tabIndex={0}
           />
         </div>

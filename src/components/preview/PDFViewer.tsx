@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2, FileWarning } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
 // Dynamically import react-pdf components to avoid SSR issues
 const Document = dynamic(
@@ -55,8 +58,11 @@ export const PDFViewer = ({
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4 p-8">
-        <FileWarning className="h-12 w-12 text-destructive" />
+      <div
+        className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4 p-8"
+        role="alert"
+      >
+        <FileWarning className="h-12 w-12 text-destructive" aria-hidden="true" />
         <div className="text-center">
           <p className="font-medium text-destructive">Compilation Error</p>
           <p className="text-sm mt-1">{error}</p>
@@ -68,7 +74,7 @@ export const PDFViewer = ({
   if (!pdfUrl && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4 p-8">
-        <FileWarning className="h-12 w-12" />
+        <FileWarning className="h-12 w-12" aria-hidden="true" />
         <p className="text-center">
           Start filling out your resume to see a preview
         </p>
@@ -78,18 +84,31 @@ export const PDFViewer = ({
 
   if (!isClient) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center h-full" role="status" aria-live="polite">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+        <span className="sr-only">Loading PDF viewer</span>
       </div>
     );
   }
 
   return (
-    <div className="relative h-full overflow-auto bg-muted/30">
+    <div
+      className={cn(
+        'relative h-full bg-muted/30',
+        isLoading ? 'overflow-hidden' : 'overflow-auto'
+      )}
+      role="region"
+      aria-label="PDF resume preview"
+      aria-busy={isLoading}
+    >
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-background/80 z-10"
+          role="status"
+          aria-live="polite"
+        >
           <div className="flex flex-col items-center gap-2">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
             <span className="text-sm text-muted-foreground">
               Generating PDF...
             </span>
@@ -98,18 +117,19 @@ export const PDFViewer = ({
       )}
 
       {pdfUrl && (
-        <div className="flex justify-center p-4">
+        <div className="flex justify-center px-4 pt-4 pb-2" aria-label="Rendered resume pages">
           <Document
             file={pdfUrl}
             onLoadSuccess={handleDocumentLoadSuccess}
             loading={
-              <div className="flex items-center justify-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <div className="flex items-center justify-center p-8" role="status" aria-live="polite">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+                <span className="sr-only">Loading PDF document</span>
               </div>
             }
             error={
-              <div className="flex flex-col items-center justify-center p-8 text-destructive">
-                <FileWarning className="h-8 w-8 mb-2" />
+              <div className="flex flex-col items-center justify-center p-8 text-destructive" role="alert">
+                <FileWarning className="h-8 w-8 mb-2" aria-hidden="true" />
                 <p>Failed to load PDF</p>
               </div>
             }
@@ -120,9 +140,10 @@ export const PDFViewer = ({
                   key={`page_${index + 1}`}
                   pageNumber={index + 1}
                   width={pageWidth}
-                  className="shadow-lg mb-4"
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
+                  className="shadow-lg"
+                  renderTextLayer
+                  renderAnnotationLayer
+                  aria-label={`Resume page ${index + 1}`}
                 />
               ))}
           </Document>

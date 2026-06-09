@@ -15,7 +15,8 @@ interface UseLatexCompileReturn {
 export const useLatexCompile = (
   resume: Resume,
   templateId: string = 'classic',
-  debounceMs: number = 1000
+  debounceMs: number = 1000,
+  enabled: boolean = true
 ): UseLatexCompileReturn => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
@@ -24,6 +25,8 @@ export const useLatexCompile = (
   const previousUrlRef = useRef<string | null>(null);
 
   const compile = useCallback(async () => {
+    if (!enabled) return;
+
     setIsCompiling(true);
     setError(null);
 
@@ -58,13 +61,17 @@ export const useLatexCompile = (
     } finally {
       setIsCompiling(false);
     }
-  }, [resume, templateId]);
+  }, [enabled, resume, templateId]);
 
   // Debounced compilation on resume changes
   useEffect(() => {
     // Clear any existing timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
+    }
+
+    if (!enabled) {
+      return;
     }
 
     // Only compile if we have some content
@@ -87,7 +94,7 @@ export const useLatexCompile = (
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [resume, templateId, debounceMs, compile]);
+  }, [enabled, resume, templateId, debounceMs, compile]);
 
   // Cleanup on unmount
   useEffect(() => {

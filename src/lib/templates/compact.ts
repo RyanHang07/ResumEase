@@ -1,5 +1,5 @@
 import { Resume } from '@/types/resume';
-import { escapeLatex, getCredits, getContactParts } from './shared';
+import { escapeLatex, getAtsLatexPreamble, getCredits, getContactParts } from './shared';
 
 export const generateCompactLatex = (resume: Resume): string => {
   const useIcons = resume.header.useIcons ?? true;
@@ -41,7 +41,7 @@ ${useIcons ? '\\usepackage{fontawesome5}' : ''}
 \\usepackage{fancyhdr}
 \\usepackage{tabularx}
 \\usepackage[default]{lato}
-\\input{glyphtounicode}
+${getAtsLatexPreamble()}
 
 \\pagestyle{fancy}
 \\fancyhf{}
@@ -56,8 +56,6 @@ ${useIcons ? '\\usepackage{fontawesome5}' : ''}
 \\setlength{\\tabcolsep}{0in}
 
 \\titleformat{\\section}{\\vspace{-4pt}\\scshape\\raggedright\\large}{}{0em}{}[\\color{black}\\titlerule\\vspace{-5pt}]
-\\pdfgentounicode=1
-
 \\newcommand{\\resumeItem}[1]{\\item\\small{{#1 \\vspace{-2pt}}}}
 \\newcommand{\\resumeSubheading}[4]{\\vspace{-2pt}\\item\\begin{tabular*}{0.97\\textwidth}[t]{l@{\\extracolsep{\\fill}}r}\\textbf{#1} & #2 \\\\\\textit{\\small#3} & \\textit{\\small #4} \\\\\\end{tabular*}\\vspace{-7pt}}
 \\newcommand{\\resumeProjectHeading}[2]{\\item\\begin{tabular*}{0.97\\textwidth}{l@{\\extracolsep{\\fill}}r}\\small#1 & #2 \\\\\\end{tabular*}\\vspace{-7pt}}

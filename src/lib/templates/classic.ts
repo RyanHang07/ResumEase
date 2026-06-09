@@ -1,10 +1,16 @@
 import { Resume } from '@/types/resume';
-import { escapeLatex, getCredits, getIconPackages, getContactParts } from './shared';
+import {
+  escapeLatex,
+  getAtsContactParts,
+  getAtsLatexPreamble,
+  getCredits,
+  getIconPackages,
+} from './shared';
 
 export const generateClassicLatex = (resume: Resume): string => {
   const useIcons = resume.header.useIcons ?? true;
   const sortedSections = [...resume.sections].sort((a, b) => a.order - b.order);
-  const contactParts = getContactParts(resume.header, useIcons, 'simple');
+  const contactParts = getAtsContactParts(resume.header, useIcons);
 
   const sections = sortedSections.map((section) => {
     if (section.type === 'skills') {
@@ -32,6 +38,7 @@ export const generateClassicLatex = (resume: Resume): string => {
 \\usepackage[margin=0.5in]{geometry}
 \\usepackage[usenames,dvipsnames]{color}
 ${getIconPackages(useIcons)}
+${getAtsLatexPreamble()}
 
 \\pagestyle{empty}
 \\raggedbottom

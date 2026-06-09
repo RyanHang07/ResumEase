@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -68,8 +69,8 @@ export const Toolbar = ({
   };
 
   return (
-    <header className="flex items-center justify-between px-6 py-3 border-b bg-background">
-      <div className="flex items-center gap-3">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-background px-3 py-3 sm:px-6">
+      <div className="flex min-w-0 items-center gap-3">
         <Image
           src="/branding.svg"
           alt="ResumEase Logo"
@@ -78,19 +79,21 @@ export const Toolbar = ({
           className="shrink-0"
           priority
         />
-        <div className="flex flex-col">
-          <h1 className="text-xl font-bold">ResumEase</h1>
-          <span className="text-xs text-muted-foreground">Latex-based resume with ease.</span>
+        <div className="flex min-w-0 flex-col">
+          <h1 className="truncate text-lg font-bold sm:text-xl">ResumEase</h1>
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            Latex-based resume with ease.
+          </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {/* Export Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" aria-label="Export options">
-              <Download className="h-4 w-4 mr-2" />
-              Export
+              <Download className="h-4 w-4 sm:mr-2" aria-hidden="true" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
@@ -101,7 +104,7 @@ export const Toolbar = ({
               aria-label="Download PDF"
             >
               <div className="flex items-center">
-                <FileDown className="h-4 w-4 mr-2" />
+                <FileDown className="h-4 w-4 mr-2" aria-hidden="true" />
                 <span>Download PDF</span>
               </div>
               <span className="text-xs text-muted-foreground ml-6">
@@ -115,7 +118,7 @@ export const Toolbar = ({
               aria-label="Export as DOCX"
             >
               <div className="flex items-center">
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
                 <span>{isDocxExporting ? 'Exporting…' : 'Export DOCX'}</span>
               </div>
               <span className="text-xs text-muted-foreground ml-6">
@@ -132,7 +135,7 @@ export const Toolbar = ({
               aria-label="Export as JSON"
             >
               <div className="flex items-center">
-                <FileJson className="h-4 w-4 mr-2" />
+                <FileJson className="h-4 w-4 mr-2" aria-hidden="true" />
                 <span>Export JSON</span>
               </div>
               <span className="text-xs text-muted-foreground ml-6">
@@ -146,7 +149,7 @@ export const Toolbar = ({
               aria-label="Export as LaTeX"
             >
               <div className="flex items-center">
-                <FileCode className="h-4 w-4 mr-2" />
+                <FileCode className="h-4 w-4 mr-2" aria-hidden="true" />
                 <span>Export LaTeX Source</span>
               </div>
               <span className="text-xs text-muted-foreground ml-6">
@@ -163,8 +166,8 @@ export const Toolbar = ({
           onClick={handleImportClick}
           aria-label="Import JSON"
         >
-          <Upload className="h-4 w-4 mr-2" />
-          Import JSON
+          <Upload className="h-4 w-4 sm:mr-2" aria-hidden="true" />
+          <span className="hidden sm:inline">Import JSON</span>
         </Button>
         <input
           ref={fileInputRef}
@@ -184,8 +187,8 @@ export const Toolbar = ({
               className="text-destructive hover:text-destructive"
               aria-label="Clear all data"
             >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Clear All
+              <Trash2 className="h-4 w-4 sm:mr-2" aria-hidden="true" />
+              <span className="hidden sm:inline">Clear All</span>
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -197,9 +200,11 @@ export const Toolbar = ({
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" type="button">
-                Cancel
-              </Button>
+              <DialogClose asChild>
+                <Button variant="outline" type="button">
+                  Cancel
+                </Button>
+              </DialogClose>
               <Button
                 variant="destructive"
                 onClick={onClearAll}
@@ -215,7 +220,8 @@ export const Toolbar = ({
         <SignedOut>
           <SignInButton mode="modal">
             <Button variant="default" size="sm" aria-label="Sign in">
-              Sign In
+              <span className="hidden sm:inline">Sign In</span>
+              <span className="sm:hidden">Sign In</span>
             </Button>
           </SignInButton>
         </SignedOut>

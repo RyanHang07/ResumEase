@@ -28,6 +28,7 @@ export const StandardSection = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [pendingFocusEntryId, setPendingFocusEntryId] = useState<string | null>(null);
+  const contentId = `standard-section-content-${section.id}`;
 
   const {
     attributes,
@@ -94,12 +95,12 @@ export const StandardSection = ({
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing touch-none"
-          aria-label="Drag to reorder section"
+          className="cursor-grab active:cursor-grabbing touch-none rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-label={`Drag to reorder ${section.sectionName || 'section'}`}
           tabIndex={0}
           suppressHydrationWarning
         >
-          <GripVertical className="h-5 w-5 text-muted-foreground" />
+          <GripVertical className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
         </button>
 
         {isEditingName ? (
@@ -117,7 +118,12 @@ export const StandardSection = ({
           <h3
             className="flex-1 font-semibold text-lg cursor-pointer hover:text-primary transition-colors"
             onClick={() => setIsEditingName(true)}
-            onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setIsEditingName(true);
+              }
+            }}
             role="button"
             tabIndex={0}
             aria-label={`Edit section name: ${section.sectionName || 'Untitled Section'}`}
@@ -132,12 +138,14 @@ export const StandardSection = ({
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="h-8 w-8"
           aria-label={isCollapsed ? 'Expand section' : 'Collapse section'}
+          aria-expanded={!isCollapsed}
+          aria-controls={contentId}
           tabIndex={0}
         >
           {isCollapsed ? (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
           ) : (
-            <ChevronUp className="h-4 w-4" />
+            <ChevronUp className="h-4 w-4" aria-hidden="true" />
           )}
         </Button>
 
@@ -149,12 +157,12 @@ export const StandardSection = ({
           aria-label="Delete section"
           tabIndex={0}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
         </Button>
       </CardHeader>
 
       {!isCollapsed && (
-        <CardContent className="p-4 space-y-4">
+        <CardContent id={contentId} className="p-4 space-y-4">
           {(section.entries ?? []).map((entry, index) => (
             <StandardEntry
               key={entry.id}
@@ -172,7 +180,7 @@ export const StandardSection = ({
             aria-label="Add new entry"
             tabIndex={0}
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
             Add Entry
           </Button>
         </CardContent>

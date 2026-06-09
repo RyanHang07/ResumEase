@@ -31,6 +31,7 @@ export const SkillsSection = ({
   const [focusedSkillsValue, setFocusedSkillsValue] = useState('');
   const [pendingFocusCategoryId, setPendingFocusCategoryId] = useState<string | null>(null);
   const categoryInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const contentId = `skills-section-content-${section.id}`;
 
   const {
     attributes,
@@ -119,12 +120,12 @@ export const SkillsSection = ({
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing touch-none"
-          aria-label="Drag to reorder section"
+          className="cursor-grab active:cursor-grabbing touch-none rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-label={`Drag to reorder ${section.sectionName || 'Skills'}`}
           tabIndex={0}
           suppressHydrationWarning
         >
-          <GripVertical className="h-5 w-5 text-muted-foreground" />
+          <GripVertical className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
         </button>
 
         {isEditingName ? (
@@ -142,7 +143,12 @@ export const SkillsSection = ({
           <h3
             className="flex-1 font-semibold text-lg cursor-pointer hover:text-primary transition-colors"
             onClick={() => setIsEditingName(true)}
-            onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setIsEditingName(true);
+              }
+            }}
             role="button"
             tabIndex={0}
             aria-label={`Edit section name: ${section.sectionName || 'Skills'}`}
@@ -157,12 +163,14 @@ export const SkillsSection = ({
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="h-8 w-8"
           aria-label={isCollapsed ? 'Expand section' : 'Collapse section'}
+          aria-expanded={!isCollapsed}
+          aria-controls={contentId}
           tabIndex={0}
         >
           {isCollapsed ? (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
           ) : (
-            <ChevronUp className="h-4 w-4" />
+            <ChevronUp className="h-4 w-4" aria-hidden="true" />
           )}
         </Button>
 
@@ -174,17 +182,20 @@ export const SkillsSection = ({
           aria-label="Delete section"
           tabIndex={0}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
         </Button>
       </CardHeader>
 
       {!isCollapsed && (
-        <CardContent className="p-4 space-y-4">
+        <CardContent id={contentId} className="p-4 space-y-4">
           {section.categories.map((category) => (
-            <div
+            <fieldset
               key={category.id}
               className="p-4 border rounded-lg bg-muted/30 space-y-3"
             >
+              <legend className="sr-only">
+                Skill category {category.categoryName || 'Untitled category'}
+              </legend>
               <div className="flex gap-2 items-center">
                 <Input
                   ref={(el) => {
@@ -209,7 +220,7 @@ export const SkillsSection = ({
                   aria-label="Remove category"
                   tabIndex={0}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
 
@@ -228,7 +239,7 @@ export const SkillsSection = ({
                   tabIndex={0}
                 />
               </div>
-            </div>
+            </fieldset>
           ))}
 
           <Button
@@ -238,7 +249,7 @@ export const SkillsSection = ({
             aria-label="Add new category"
             tabIndex={0}
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
             Add Category
           </Button>
         </CardContent>

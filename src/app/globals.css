@@ -120,6 +120,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body {
+    @apply h-full overflow-hidden;
+  }
   body {
     @apply bg-background text-foreground;
   }
@@ -127,10 +131,17 @@
 
 /* React PDF styles */
 .react-pdf__Page {
+  position: relative;
+  overflow: hidden;
   margin-bottom: 1rem;
 }
 
+.react-pdf__Page:last-child {
+  margin-bottom: 0;
+}
+
 .react-pdf__Page__canvas {
+  display: block;
   margin: 0 auto;
   border-radius: 4px;
 }

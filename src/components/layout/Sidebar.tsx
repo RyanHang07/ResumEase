@@ -56,6 +56,7 @@ const NavItem = ({
 }: NavItemProps) => {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
         'flex items-center w-full gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-md mx-2 relative overflow-hidden',
@@ -66,6 +67,7 @@ const NavItem = ({
       )}
       aria-label={label}
       aria-pressed={isActive}
+      aria-current={isActive ? 'page' : undefined}
     >
       {icon}
       {!isCollapsed && <span className="relative z-0">{label}</span>}
@@ -80,7 +82,7 @@ export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
   const [mounted, setMounted] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
-  const heartRef = useRef<HTMLDivElement>(null);
+  const heartRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -124,6 +126,7 @@ export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="h-8 w-8"
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!isCollapsed}
         >
           {isCollapsed ? (
             <ChevronRight className="h-4 w-4" />
@@ -136,14 +139,14 @@ export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
       {/* Navigation Items */}
       <nav className="flex flex-col gap-1 py-2 overflow-hidden">
         <NavItem
-          icon={<LayoutTemplate className="h-4 w-4 shrink-0" />}
+          icon={<LayoutTemplate className="h-4 w-4 shrink-0" aria-hidden="true" />}
           label="Templates"
           isActive={activeView === 'templates'}
           isCollapsed={isCollapsed}
           onClick={() => onViewChange('templates')}
         />
         <NavItem
-          icon={<FileEdit className="h-4 w-4 shrink-0" />}
+          icon={<FileEdit className="h-4 w-4 shrink-0" aria-hidden="true" />}
           label="Editor"
           isActive={activeView === 'editor'}
           isCollapsed={isCollapsed}
@@ -151,7 +154,7 @@ export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
         />
         {isSignedIn && (
           <NavItem
-            icon={<Save className="h-4 w-4 shrink-0" />}
+            icon={<Save className="h-4 w-4 shrink-0" aria-hidden="true" />}
             label="Saved"
             isActive={activeView === 'saved'}
             isCollapsed={isCollapsed}
@@ -208,34 +211,40 @@ export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
               target="_blank"
               rel="noopener noreferrer"
               className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
-              aria-label="LinkedIn"
+            aria-label="Open Ryan Hang's LinkedIn profile in a new tab"
               tabIndex={0}
             >
-              <Linkedin className="h-4 w-4" />
+              <Linkedin className="h-4 w-4" aria-hidden="true" />
             </a>
             <a
               href={AUTHOR_INFO.github}
               target="_blank"
               rel="noopener noreferrer"
               className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
-              aria-label="GitHub"
+            aria-label="Open Ryan Hang's GitHub profile in a new tab"
               tabIndex={0}
             >
-              <Github className="h-4 w-4" />
+              <Github className="h-4 w-4" aria-hidden="true" />
             </a>
             <a
               href={AUTHOR_INFO.portfolio}
               target="_blank"
               rel="noopener noreferrer"
               className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
-              aria-label="Portfolio"
+            aria-label="Open Ryan Hang's portfolio in a new tab"
               tabIndex={0}
             >
-              <Globe className="h-4 w-4" />
+              <Globe className="h-4 w-4" aria-hidden="true" />
             </a>
-            <div
+            <button
+              type="button"
               ref={heartRef}
-              className={cn('relative', isCollapsed ? 'mt-1' : '')}
+              className={cn(
+                'relative rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                isCollapsed ? 'mt-1' : ''
+              )}
+              aria-label={AUTHOR_INFO.heartMessage}
+              aria-describedby={showTooltip ? 'author-heart-tooltip' : undefined}
               onMouseEnter={() => {
                 if (heartRef.current) {
                   const rect = heartRef.current.getBoundingClientRect();
@@ -254,9 +263,20 @@ export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
                 }
               }}
               onMouseLeave={() => setShowTooltip(false)}
+              onFocus={() => {
+                if (heartRef.current) {
+                  const rect = heartRef.current.getBoundingClientRect();
+                  setTooltipPosition({
+                    top: isCollapsed ? rect.top + rect.height / 2 : rect.top - 8,
+                    left: isCollapsed ? rect.right + 8 : rect.left + rect.width / 2,
+                  });
+                  setShowTooltip(true);
+                }
+              }}
+              onBlur={() => setShowTooltip(false)}
             >
-              <Heart className="h-4 w-4 m-1 text-red-500 fill-red-500 cursor-default" />
-            </div>
+              <Heart className="h-4 w-4 m-1 text-red-500 fill-red-500" aria-hidden="true" />
+            </button>
           </div>
         </div>
       </div>
@@ -264,6 +284,8 @@ export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
       {/* Tooltip Portal */}
       {mounted && showTooltip && typeof window !== 'undefined' && createPortal(
         <div
+          id="author-heart-tooltip"
+          role="tooltip"
           className="fixed px-2 py-1 text-xs text-popover-foreground bg-popover border border-border rounded-md whitespace-nowrap pointer-events-none z-9999 shadow-lg transition-opacity duration-200"
           style={{
             top: `${tooltipPosition.top}px`,

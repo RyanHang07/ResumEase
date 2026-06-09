@@ -38,7 +38,7 @@ export const PreviewControls = ({
   isSaving,
 }: PreviewControlsProps) => {
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/30 px-3 py-2 sm:px-4">
       <div className="flex items-center gap-1">
         <Button
           variant="ghost"
@@ -49,7 +49,7 @@ export const PreviewControls = ({
           aria-label="Zoom out"
           tabIndex={0}
         >
-          <ZoomOut className="h-4 w-4" />
+          <ZoomOut className="h-4 w-4" aria-hidden="true" />
         </Button>
 
         <span className="text-sm font-medium w-14 text-center">
@@ -65,7 +65,7 @@ export const PreviewControls = ({
           aria-label="Zoom in"
           tabIndex={0}
         >
-          <ZoomIn className="h-4 w-4" />
+          <ZoomIn className="h-4 w-4" aria-hidden="true" />
         </Button>
 
         <Button
@@ -76,20 +76,29 @@ export const PreviewControls = ({
           aria-label="Fit to width"
           tabIndex={0}
         >
-          <Maximize2 className="h-4 w-4" />
+          <Maximize2 className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
         {isCompiling && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Compiling...</span>
+          <div
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            <span className="hidden sm:inline">Compiling...</span>
+            <span className="sr-only sm:hidden">Compiling resume preview</span>
           </div>
         )}
 
         {lastSaved && !isCompiling && (
-          <span className="text-sm text-muted-foreground">
+          <span
+            className="hidden text-sm text-muted-foreground sm:inline"
+            role="status"
+            aria-live="polite"
+          >
             {isSaving ? 'Saving...' : `Saved ${formatLastSaved(lastSaved)}`}
           </span>
         )}
@@ -103,8 +112,13 @@ export const PreviewControls = ({
           aria-label="Recompile"
           tabIndex={0}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isCompiling ? 'animate-spin' : ''}`} />
-          {isCompiling ? 'Compiling...' : 'Recompile'}
+          <RefreshCw
+            className={`h-4 w-4 sm:mr-2 ${isCompiling ? 'animate-spin' : ''}`}
+            aria-hidden="true"
+          />
+          <span className="hidden sm:inline">
+            {isCompiling ? 'Compiling...' : 'Recompile'}
+          </span>
         </Button>
       </div>
     </div>

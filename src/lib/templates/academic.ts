@@ -1,5 +1,5 @@
 import { Resume } from '@/types/resume';
-import { escapeLatex, getCredits, extractUsername } from './shared';
+import { escapeLatex, getAtsLatexPreamble, getCredits, extractUsername } from './shared';
 
 export const generateAcademicLatex = (resume: Resume): string => {
   const sortedSections = [...resume.sections].sort((a, b) => a.order - b.order);
@@ -35,6 +35,7 @@ export const generateAcademicLatex = (resume: Resume): string => {
 \\usepackage[hidelinks]{hyperref}
 \\usepackage{titlesec}
 \\usepackage{times}
+${getAtsLatexPreamble()}
 
 \\pagestyle{plain}
 \\setlength{\\parindent}{0pt}

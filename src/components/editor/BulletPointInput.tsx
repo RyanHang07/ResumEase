@@ -28,7 +28,7 @@ export const BulletPointInput = ({
 
   return (
     <div className="flex gap-2 items-start">
-      <div className="flex items-center pt-2 text-muted-foreground">
+      <div className="flex items-center pt-2 text-muted-foreground" aria-hidden="true">
         <span className="text-sm">•</span>
       </div>
       <Textarea
@@ -50,7 +50,7 @@ export const BulletPointInput = ({
         aria-label={`Remove bullet point ${index + 1}`}
         tabIndex={0}
       >
-        <X className="h-4 w-4" />
+        <X className="h-4 w-4" aria-hidden="true" />
       </Button>
     </div>
   );

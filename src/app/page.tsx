@@ -1,11 +1,16 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { SignedIn } from '@clerk/nextjs';
+import { FileEdit, FileJson, FileText, LayoutTemplate, Save } from 'lucide-react';
 import { useResumeStore } from '@/store/resumeStore';
 import { useLatexCompile } from '@/hooks/useLatexCompile';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { EditorPanel } from '@/components/editor/EditorPanel';
 import { PreviewPanel } from '@/components/preview/PreviewPanel';
+import { JsonEditorPanel } from '@/components/preview/JsonEditorPanel';
+import { JsonErrorLeaveDialog } from '@/components/preview/JsonErrorLeaveDialog';
 import { Sidebar, SidebarView } from '@/components/layout/Sidebar';
 import { TemplatesPanel } from '@/components/layout/TemplatesPanel';
 import { SavedResumesPanel } from '@/components/layout/SavedResumesPanel';
@@ -14,9 +19,53 @@ import { exportResumeAsJson, importResumeFromJson } from '@/lib/storage';
 import { downloadLatexSource } from '@/lib/latex-generator';
 import { downloadDocx } from '@/lib/docx-generator';
 import { Section, Resume } from '@/types/resume';
+import { cn } from '@/lib/utils';
+
+type PreviewMode = 'pdf' | 'json';
+type MobileView = SidebarView | 'preview' | 'json';
+
+interface ViewToggleButtonProps {
+  isActive: boolean;
+  onClick: () => void;
+  icon: ReactNode;
+  label: string;
+  controlsId: string;
+}
+
+const ViewToggleButton = ({
+  isActive,
+  onClick,
+  icon,
+  label,
+  controlsId,
+}: ViewToggleButtonProps) => (
+  <button
+    type="button"
+    role="tab"
+    onClick={onClick}
+    className={cn(
+      'inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+      isActive
+        ? 'bg-primary text-primary-foreground'
+        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+    )}
+    aria-label={`Show ${label}`}
+    aria-selected={isActive}
+    aria-controls={controlsId}
+    tabIndex={isActive ? 0 : -1}
+  >
+    {icon}
+    <span className="hidden sm:inline">{label}</span>
+  </button>
+);
 
 export default function HomePage() {
   const [activeView, setActiveView] = useState<SidebarView>('editor');
+  const [mobileView, setMobileView] = useState<MobileView>('editor');
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('pdf');
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
+  const [jsonHasErrors, setJsonHasErrors] = useState(false);
+  const [pendingJsonLeaveAction, setPendingJsonLeaveAction] = useState<(() => void) | null>(null);
   const [isDocxExporting, setIsDocxExporting] = useState(false);
 
   const {
@@ -32,8 +81,37 @@ export default function HomePage() {
     setTemplate,
   } = useResumeStore();
 
-  const { pdfUrl, isCompiling, error, downloadPdf, compile } = useLatexCompile(resume, currentTemplate);
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const handleMediaChange = () => setIsLargeScreen(mediaQuery.matches);
+
+    handleMediaChange();
+    mediaQuery.addEventListener('change', handleMediaChange);
+
+    return () => mediaQuery.removeEventListener('change', handleMediaChange);
+  }, []);
+
+  const isPdfPreviewActive =
+    previewMode === 'pdf' && (isLargeScreen || mobileView === 'preview');
+  const { pdfUrl, isCompiling, error, downloadPdf, compile } = useLatexCompile(
+    resume,
+    currentTemplate,
+    1000,
+    isPdfPreviewActive
+  );
   const { isSaving, lastSaved } = useAutoSave(resume);
+
+  const runWithJsonErrorGuard = useCallback(
+    (action: () => void) => {
+      if (previewMode === 'json' && jsonHasErrors) {
+        setPendingJsonLeaveAction(() => action);
+        return;
+      }
+
+      action();
+    },
+    [jsonHasErrors, previewMode]
+  );
 
   const handleExportJson = useCallback(() => {
     exportResumeAsJson(resume);
@@ -81,9 +159,12 @@ export default function HomePage() {
 
   const handleSelectTemplate = useCallback(
     (templateId: string) => {
-      setTemplate(templateId);
+      runWithJsonErrorGuard(() => {
+        setTemplate(templateId);
+        setPreviewMode('pdf');
+      });
     },
-    [setTemplate]
+    [runWithJsonErrorGuard, setTemplate]
   );
 
   const handleLoadSavedResume = useCallback(
@@ -91,12 +172,101 @@ export default function HomePage() {
       setTemplate(templateId);
       importResume(loadedResume);
       setActiveView('editor');
+      setMobileView('editor');
+      setJsonHasErrors(false);
     },
     [setTemplate, importResume]
   );
 
+  const handleDesktopPreviewModeChange = useCallback((mode: PreviewMode) => {
+    if (mode === previewMode) return;
+    runWithJsonErrorGuard(() => setPreviewMode(mode));
+  }, [previewMode, runWithJsonErrorGuard]);
+
+  const handleMobileViewChange = useCallback((view: MobileView) => {
+    if (view === mobileView) return;
+
+    runWithJsonErrorGuard(() => {
+      setMobileView(view);
+      if (view === 'preview') {
+        setPreviewMode('pdf');
+        return;
+      }
+      if (view === 'json') {
+        setPreviewMode('json');
+        return;
+      }
+      setActiveView(view);
+    });
+  }, [mobileView, runWithJsonErrorGuard]);
+
+  const handleConfirmJsonLeave = useCallback(() => {
+    pendingJsonLeaveAction?.();
+    setPendingJsonLeaveAction(null);
+    setJsonHasErrors(false);
+  }, [pendingJsonLeaveAction]);
+
+  const renderLeftPanel = () => {
+    if (activeView === 'templates') {
+      return (
+        <TemplatesPanel
+          selectedTemplate={currentTemplate}
+          onSelectTemplate={handleSelectTemplate}
+          resume={resume}
+        />
+      );
+    }
+
+    if (activeView === 'saved') {
+      return <SavedResumesPanel onLoadResume={handleLoadSavedResume} />;
+    }
+
+    return (
+      <EditorPanel
+        resume={resume}
+        onUpdateHeader={updateHeader}
+        onAddSection={addSection}
+        onUpdateSection={handleUpdateSection}
+        onRemoveSection={removeSection}
+        onReorderSections={reorderSections}
+      />
+    );
+  };
+
+  const renderPreviewPanel = () =>
+    previewMode === 'json' ? (
+      <JsonEditorPanel
+        resume={resume}
+        onApply={importResume}
+        onErrorStateChange={setJsonHasErrors}
+      />
+    ) : (
+      <PreviewPanel
+        pdfUrl={pdfUrl}
+        isLoading={isCompiling}
+        error={error}
+        lastSaved={lastSaved}
+        isSaving={isSaving}
+        onRecompile={compile}
+      />
+    );
+
+  const renderMobilePanel = () => {
+    if (mobileView === 'preview' || mobileView === 'json') {
+      return renderPreviewPanel();
+    }
+
+    return renderLeftPanel();
+  };
+
   return (
-    <div className="h-screen flex flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
+      <a
+        href="#workspace-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        Skip to resume workspace
+      </a>
       <Toolbar
         onExportJson={handleExportJson}
         onExportLatex={handleExportLatex}
@@ -107,43 +277,113 @@ export default function HomePage() {
         isPdfReady={!!pdfUrl && !isCompiling}
         isDocxExporting={isDocxExporting}
       />
-      <div className="flex flex-1 overflow-hidden">
+      <JsonErrorLeaveDialog
+        open={!!pendingJsonLeaveAction}
+        onOpenChange={(open) => {
+          if (!open) setPendingJsonLeaveAction(null);
+        }}
+        onConfirm={handleConfirmJsonLeave}
+      />
+
+      <main
+        id="workspace-content"
+        tabIndex={-1}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden focus:outline-none"
+        aria-label="Resume workspace"
+      >
+        <nav
+          className="flex shrink-0 gap-2 overflow-x-auto border-b bg-background p-2 lg:hidden"
+          aria-label="Mobile workspace views"
+          role="tablist"
+        >
+          <ViewToggleButton
+            isActive={mobileView === 'editor'}
+            onClick={() => handleMobileViewChange('editor')}
+            icon={<FileEdit className="h-4 w-4" aria-hidden="true" />}
+            label="Editor"
+            controlsId="mobile-workspace-panel"
+          />
+          <ViewToggleButton
+            isActive={mobileView === 'templates'}
+            onClick={() => handleMobileViewChange('templates')}
+            icon={<LayoutTemplate className="h-4 w-4" aria-hidden="true" />}
+            label="Templates"
+            controlsId="mobile-workspace-panel"
+          />
+          <SignedIn>
+            <ViewToggleButton
+              isActive={mobileView === 'saved'}
+              onClick={() => handleMobileViewChange('saved')}
+              icon={<Save className="h-4 w-4" aria-hidden="true" />}
+              label="Saved"
+              controlsId="mobile-workspace-panel"
+            />
+          </SignedIn>
+          <ViewToggleButton
+            isActive={mobileView === 'preview'}
+            onClick={() => handleMobileViewChange('preview')}
+            icon={<FileText className="h-4 w-4" aria-hidden="true" />}
+            label="Preview"
+            controlsId="mobile-workspace-panel"
+          />
+          <ViewToggleButton
+            isActive={mobileView === 'json'}
+            onClick={() => handleMobileViewChange('json')}
+            icon={<FileJson className="h-4 w-4" aria-hidden="true" />}
+            label="JSON"
+            controlsId="mobile-workspace-panel"
+          />
+        </nav>
+
+      <div className="hidden min-h-0 flex-1 overflow-hidden lg:flex">
         {/* Collapsible Sidebar */}
         <Sidebar activeView={activeView} onViewChange={setActiveView} />
 
         {/* Left Panel - Templates, Editor, or Saved */}
         <div className="w-2/5 min-w-[300px] max-w-[500px] border-r overflow-hidden">
-          {activeView === 'templates' ? (
-            <TemplatesPanel
-              selectedTemplate={currentTemplate}
-              onSelectTemplate={handleSelectTemplate}
-            />
-          ) : activeView === 'saved' ? (
-            <SavedResumesPanel onLoadResume={handleLoadSavedResume} />
-          ) : (
-            <EditorPanel
-              resume={resume}
-              onUpdateHeader={updateHeader}
-              onAddSection={addSection}
-              onUpdateSection={handleUpdateSection}
-              onRemoveSection={removeSection}
-              onReorderSections={reorderSections}
-            />
-          )}
+          {renderLeftPanel()}
         </div>
 
-        {/* Right Panel - Preview (always visible) */}
-        <div className="flex-1 overflow-hidden">
-          <PreviewPanel
-            pdfUrl={pdfUrl}
-            isLoading={isCompiling}
-            error={error}
-            lastSaved={lastSaved}
-            isSaving={isSaving}
-            onRecompile={compile}
-          />
+        {/* Right Panel - Preview or JSON */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div
+            className="flex shrink-0 justify-end gap-2 border-b bg-background px-4 py-2"
+            role="tablist"
+            aria-label="Preview panel mode"
+          >
+            <ViewToggleButton
+              isActive={previewMode === 'pdf'}
+              onClick={() => handleDesktopPreviewModeChange('pdf')}
+              icon={<FileText className="h-4 w-4" aria-hidden="true" />}
+              label="PDF Preview"
+              controlsId="desktop-preview-panel"
+            />
+            <ViewToggleButton
+              isActive={previewMode === 'json'}
+              onClick={() => handleDesktopPreviewModeChange('json')}
+              icon={<FileJson className="h-4 w-4" aria-hidden="true" />}
+              label="JSON Editor"
+              controlsId="desktop-preview-panel"
+            />
+          </div>
+          <div
+            id="desktop-preview-panel"
+            role="tabpanel"
+            className="min-h-0 flex-1 overflow-hidden"
+          >
+            {renderPreviewPanel()}
+          </div>
         </div>
       </div>
+
+        <div
+          id="mobile-workspace-panel"
+          role="tabpanel"
+          className="min-h-0 flex-1 overflow-hidden lg:hidden"
+        >
+          {renderMobilePanel()}
+        </div>
+      </main>
     </div>
   );
 }

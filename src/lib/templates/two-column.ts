@@ -1,5 +1,5 @@
 import { Resume, StandardSection } from '@/types/resume';
-import { escapeLatex, getCredits, extractUsername } from './shared';
+import { escapeLatex, getAtsLatexPreamble, getCredits, extractUsername } from './shared';
 
 export const generateTwoColumnLatex = (resume: Resume): string => {
   const useIcons = resume.header.useIcons ?? true;
@@ -81,6 +81,7 @@ export const generateTwoColumnLatex = (resume: Resume): string => {
 \\usepackage[hidelinks]{hyperref}
 \\usepackage{xcolor}
 ${useIcons ? '\\usepackage{fontawesome5}' : ''}
+${getAtsLatexPreamble()}
 
 \\definecolor{sidebarcolor}{RGB}{245,245,250}
 \\pagestyle{empty}
