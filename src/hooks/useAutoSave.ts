@@ -17,19 +17,22 @@ export const useAutoSave = (resume: Resume): UseAutoSaveReturn => {
   useEffect(() => {
     const currentResume = JSON.stringify(resume);
 
-    // Check if resume has changed
-    if (currentResume !== previousResumeRef.current) {
-      previousResumeRef.current = currentResume;
+    if (currentResume === previousResumeRef.current) return;
 
-      // Show brief "saving" indicator for UX feedback
+    previousResumeRef.current = currentResume;
+
+    const startTimeout = window.setTimeout(() => {
       setIsSaving(true);
-      const timeout = setTimeout(() => {
-        setIsSaving(false);
-        setLastSaved(new Date());
-      }, 300);
+    }, 0);
+    const doneTimeout = window.setTimeout(() => {
+      setIsSaving(false);
+      setLastSaved(new Date());
+    }, 300);
 
-      return () => clearTimeout(timeout);
-    }
+    return () => {
+      window.clearTimeout(startTimeout);
+      window.clearTimeout(doneTimeout);
+    };
   }, [resume]);
 
   return { isSaving, lastSaved };

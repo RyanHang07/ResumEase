@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, ChevronDown, ChevronUp, Trash2, X, Plus } from 'lucide-react';
@@ -29,7 +29,6 @@ export const SkillsSection = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const [focusedSkillsCategoryId, setFocusedSkillsCategoryId] = useState<string | null>(null);
   const [focusedSkillsValue, setFocusedSkillsValue] = useState('');
-  const [pendingFocusCategoryId, setPendingFocusCategoryId] = useState<string | null>(null);
   const categoryInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const contentId = `skills-section-content-${section.id}`;
 
@@ -76,7 +75,9 @@ export const SkillsSection = ({
       categories: categories.filter((cat) => cat.id !== categoryId),
     });
 
-    if (focusTargetId) setPendingFocusCategoryId(focusTargetId);
+    if (focusTargetId) {
+      categoryInputRefs.current[focusTargetId]?.focus();
+    }
   };
 
   const handleSkillsFocus = (categoryId: string, currentSkills: string[]) => {
@@ -104,15 +105,6 @@ export const SkillsSection = ({
       setIsEditingName(false);
     }
   };
-
-  useEffect(() => {
-    if (!pendingFocusCategoryId) return;
-    const el = categoryInputRefs.current[pendingFocusCategoryId];
-    if (el) {
-      el.focus();
-    }
-    setPendingFocusCategoryId(null);
-  }, [pendingFocusCategoryId]);
 
   return (
     <Card ref={setNodeRef} style={style} className="gap-0 overflow-hidden py-0">

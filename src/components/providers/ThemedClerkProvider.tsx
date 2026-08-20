@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { ClerkProvider } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
 
@@ -166,37 +166,39 @@ const lightThemeConfig = {
   },
 };
 
+const THEME_EVENT = 'resumease-theme';
+
+const subscribeTheme = (onStoreChange: () => void): (() => void) => {
+  const handleChange = () => onStoreChange();
+  window.addEventListener('storage', handleChange);
+  window.addEventListener(THEME_EVENT, handleChange);
+  const observer = new MutationObserver(handleChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class'],
+  });
+  return () => {
+    window.removeEventListener('storage', handleChange);
+    window.removeEventListener(THEME_EVENT, handleChange);
+    observer.disconnect();
+  };
+};
+
+const getIsDarkSnapshot = (): boolean => {
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'light') return false;
+  if (savedTheme === 'dark' || !savedTheme) return true;
+  return document.documentElement.classList.contains('dark');
+};
+
+const getIsDarkServerSnapshot = (): boolean => true;
+
 export const ThemedClerkProvider = ({ children }: ThemedClerkProviderProps) => {
-  const [isDark, setIsDark] = useState(true);
-
-  useEffect(() => {
-    const checkTheme = () => {
-      const isDarkMode = document.documentElement.classList.contains('dark');
-      setIsDark(isDarkMode);
-    };
-
-    // Check initial theme from localStorage or DOM
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      setIsDark(false);
-    } else if (savedTheme === 'dark' || !savedTheme) {
-      setIsDark(true);
-    } else {
-      // Fallback to checking DOM
-      checkTheme();
-    }
-
-    // Watch for theme changes using MutationObserver
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
+  const isDark = useSyncExternalStore(
+    subscribeTheme,
+    getIsDarkSnapshot,
+    getIsDarkServerSnapshot
+  );
 
   return (
     <ClerkProvider appearance={isDark ? darkThemeConfig : lightThemeConfig}>

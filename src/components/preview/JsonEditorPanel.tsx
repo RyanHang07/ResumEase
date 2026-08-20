@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, FileJson, LocateFixed, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -49,6 +49,7 @@ export const JsonEditorPanel = ({
 }: JsonEditorPanelProps) => {
   const initialJson = useMemo(() => resumeToEditorJson(resume), [resume]);
   const [draft, setDraft] = useState(initialJson);
+  const [loadedResumeId, setLoadedResumeId] = useState(resume.id);
   const lineNumbers = useMemo(
     () => Array.from({ length: draft.split('\n').length }, (_, index) => index + 1),
     [draft]
@@ -61,12 +62,13 @@ export const JsonEditorPanel = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Sync draft when a different resume is loaded (prefer sync over remount for undo UX).
-  useEffect(() => {
+  if (resume.id !== loadedResumeId) {
+    setLoadedResumeId(resume.id);
     setDraft(resumeToEditorJson(resume));
     setError(null);
     setErrorLine(null);
     setSuccessMessage(null);
-  }, [resume.id]);
+  }
 
   const handleJumpToErrorLine = () => {
     if (!errorLine || !textareaRef.current) return;
