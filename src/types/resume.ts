@@ -1,19 +1,64 @@
-// TypeScript interfaces for the Visual Resume Builder
+export const CURRENT_SCHEMA_VERSION = 2 as const;
+export type SchemaVersion = typeof CURRENT_SCHEMA_VERSION;
+export type IconMode = 'none' | 'icon' | 'icon-and-text';
+export type EntryLinkLabel = 'repo' | 'demo' | 'paper' | 'pr' | 'other';
 
 export interface Header {
   name: string;
   email: string;
   phone?: string;
+  location?: string;
   linkedIn?: string;
   github?: string;
+  website?: string;
+  blog?: string;
+  /** @deprecated Prefer education entry `expectedGraduation`. Kept for migrate. */
+  expectedGraduation?: string;
+  /** @deprecated Prefer education entry `gpa`. Kept for migrate. */
+  gpa?: number;
+  workAuthorization?: string;
+  iconMode?: IconMode;
+  /** @deprecated Use iconMode. Migrated from v1. */
   useIcons?: boolean;
+}
+
+export interface DateSpan {
+  start?: string;
+  end?: string | 'present';
+  display?: string;
+}
+
+export interface EntryLink {
+  label: EntryLinkLabel;
+  url: string;
+  verified?: boolean;
+}
+
+export interface OrgContext {
+  descriptor?: string;
+  teamSize?: number;
+  engineerNumber?: number;
+  scale?: string;
 }
 
 export interface StandardEntry {
   id: string;
-  title: string;
+  role?: string;
   organization?: string;
+  title: string;
+  location?: string;
+  dates?: DateSpan;
+  /** @deprecated Use dates. Migrated from v1. */
   dateRange?: string;
+  techStack?: string[];
+  links?: EntryLink[];
+  coursework?: string[];
+  /** Expected graduation for education entries (YYYY-MM). */
+  expectedGraduation?: string;
+  /** Cumulative GPA for education entries (0–4). */
+  gpa?: number;
+  /** @deprecated Prefer putting company context in bullets. Kept for migrate. */
+  orgContext?: OrgContext;
   bulletPoints: string[];
 }
 
@@ -41,29 +86,46 @@ export interface SkillsSection {
 
 export type Section = StandardSection | SkillsSection;
 
+export interface JobTarget {
+  company: string;
+  role: string;
+  jdText: string;
+}
+
 export interface Resume {
+  schemaVersion: SchemaVersion;
   id: string;
   header: Header;
   sections: Section[];
   lastModified: Date;
+  coverLetter?: string;
+  jobTarget?: JobTarget;
 }
 
-// Default values for creating new items
 export const createDefaultHeader = (): Header => ({
   name: '',
   email: '',
   phone: '',
+  location: '',
   linkedIn: '',
   github: '',
-  useIcons: true,
+  website: '',
+  blog: '',
+  workAuthorization: '',
+  iconMode: 'icon-and-text',
 });
 
 export const createDefaultStandardEntry = (): StandardEntry => ({
   id: crypto.randomUUID(),
   title: '',
+  role: '',
   organization: '',
-  dateRange: '',
-  bulletPoints: [''],
+  location: '',
+  dates: {},
+  techStack: [],
+  links: [],
+  coursework: [],
+  bulletPoints: [],
 });
 
 export const createDefaultStandardSection = (order: number): StandardSection => ({
@@ -89,6 +151,7 @@ export const createDefaultSkillsSection = (order: number): SkillsSection => ({
 });
 
 export const createDefaultResume = (): Resume => ({
+  schemaVersion: CURRENT_SCHEMA_VERSION,
   id: crypto.randomUUID(),
   header: createDefaultHeader(),
   sections: [],

@@ -24,7 +24,14 @@ export const ATS_LATEX_PREAMBLE = `\\input{glyphtounicode}
 
 const SECTION_ALIASES: Record<CanonicalSectionType, string[]> = {
   summary: ['summary', 'professional summary', 'profile', 'objective'],
-  experience: ['experience', 'work experience', 'professional experience', 'employment'],
+  experience: [
+    'experience',
+    'work experience',
+    'professional experience',
+    'relevant experience',
+    'work history',
+    'employment',
+  ],
   education: ['education', 'academic background'],
   projects: ['projects', 'personal projects', 'technical projects', 'portfolio'],
   skills: ['skills', 'technical skills', 'core skills', 'competencies'],
@@ -36,7 +43,7 @@ export const escapeLatex = (text: string): string => {
   if (!text) return '';
 
   return text
-    .replace(/\\/g, '\\textbackslash{}')
+    .replace(/\\/g, '\u0000')
     .replace(/&/g, '\\&')
     .replace(/%/g, '\\%')
     .replace(/\$/g, '\\$')
@@ -45,17 +52,81 @@ export const escapeLatex = (text: string): string => {
     .replace(/\{/g, '\\{')
     .replace(/\}/g, '\\}')
     .replace(/~/g, '\\textasciitilde{}')
-    .replace(/\^/g, '\\textasciicircum{}');
+    .replace(/\^/g, '\\textasciicircum{}')
+    .replace(/\u0000/g, '\\textbackslash{}');
+};
+
+/** Escape for a single \\item line: collapse newlines so they cannot break list syntax. */
+export const escapeLatexInline = (text: string): string =>
+  escapeLatex(text.replace(/\s*\n\s*/g, ' ').trim());
+
+/**
+ * Normalize a user-entered URL for href use.
+ * Prefills https:// for scheme-less hosts; returns null if empty or non-http(s).
+ */
+export const normalizeHttpUrl = (raw: string): string | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const tryParse = (value: string): string | null => {
+    try {
+      const url = new URL(value);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+      if (url.username || url.password) return null;
+      return url.toString();
+    } catch {
+      return null;
+    }
+  };
+
+  const direct = tryParse(trimmed);
+  if (direct) return direct;
+
+  // Scheme-less: github.com/x → https://github.com/x
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return null;
+  return tryParse(`https://${trimmed}`);
+};
+
+/** Sanitize a URL for use inside \\href{...}{...}. Returns null if unsafe. */
+export const escapeHrefUrl = (raw: string): string | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.toLowerCase().startsWith('mailto:')) {
+    const email = trimmed.slice('mailto:'.length).trim();
+    if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) return null;
+    return `mailto:${email.replace(/%/g, '\\%').replace(/#/g, '\\#')}`;
+  }
+
+  const normalized = normalizeHttpUrl(trimmed);
+  if (!normalized) return null;
+
+  try {
+    const url = new URL(normalized);
+    // hyperref specials in the URL argument
+    return url
+      .toString()
+      .replace(/\\/g, '')
+      .replace(/\{/g, '')
+      .replace(/\}/g, '')
+      .replace(/%/g, '\\%')
+      .replace(/#/g, '\\#')
+      .replace(/&/g, '\\&')
+      .replace(/_/g, '\\_');
+  } catch {
+    return null;
+  }
 };
 
 export const getAtsLatexPreamble = (): string => ATS_LATEX_PREAMBLE;
 
 export const normalizeSectionName = (sectionName: string): CanonicalSectionType | null => {
-  const normalized = sectionName.trim().toLowerCase();
+  // ponytail: exact alias match only — includes() mapped "leadership experience awards" → experience
+  const normalized = sectionName.trim().toLowerCase().replace(/\s+/g, ' ');
   if (!normalized) return null;
 
   const match = Object.entries(SECTION_ALIASES).find(([, aliases]) =>
-    aliases.some((alias) => normalized === alias || normalized.includes(alias))
+    aliases.some((alias) => normalized === alias)
   );
 
   return (match?.[0] as CanonicalSectionType | undefined) ?? null;
@@ -67,11 +138,13 @@ export const isAtsStandardSectionName = (sectionName: string): boolean =>
 export const extractUsername = (url: string, platform: string): string => {
   if (!url) return '';
   const patterns: Record<string, RegExp> = {
+    // Keep /in/ so printed text matches what ATS + PDF extract look for
     linkedin: /linkedin\.com\/in\/([^\/\?]+)/i,
     github: /github\.com\/([^\/\?]+)/i,
   };
   const match = url.match(patterns[platform]);
   if (match) {
+    if (platform === 'linkedin') return `linkedin.com/in/${match[1]}`;
     return `${platform}.com/${match[1]}`;
   }
   return url.replace(/^https?:\/\/(www\.)?/, '');
@@ -93,66 +166,133 @@ export const getIconPackages = (useIcons: boolean): string => {
 \\newcommand{\\seticon}[1]{\\textcolor{IconColor}{\\csname #1\\endcsname}}`;
 };
 
-export const getContactParts = (header: Header, useIcons: boolean, style: 'simple' | 'underline' | 'icon-only' = 'simple'): string[] => {
+type ContactStyle = 'simple' | 'underline';
+
+const hrefPart = (
+  href: string | null,
+  display: string,
+  icon: string,
+  style: ContactStyle
+): string => {
+  if (!href) return `${icon}${display}`;
+  if (style === 'underline') return `\\href{${href}}{${icon}\\underline{${display}}}`;
+  return `\\href{${href}}{${icon}${display}}`;
+};
+
+const buildLinkParts = (
+  header: Header,
+  useIcons: boolean,
+  style: ContactStyle
+): string[] => {
   const parts: string[] = [];
-  
-  if (header.phone) {
-    const icon = useIcons ? '\\seticon{faPhone} ' : '';
-    parts.push(`${icon}${escapeLatex(header.phone)}`);
-  }
-  if (header.email) {
-    const icon = useIcons ? '\\seticon{faEnvelope} ' : '';
-    const email = escapeLatex(header.email);
-    if (style === 'underline') {
-      parts.push(`\\href{mailto:${header.email}}{${icon}\\underline{${email}}}`);
-    } else {
-      parts.push(`\\href{mailto:${header.email}}{${icon}${email}}`);
-    }
-  }
-  if (header.linkedIn) {
+  if (header.linkedIn?.trim()) {
     const icon = useIcons ? '\\seticon{faLinkedin} ' : '';
-    const display = escapeLatex(extractUsername(header.linkedIn, 'linkedin'));
-    if (style === 'underline') {
-      parts.push(`\\href{${header.linkedIn}}{${icon}\\underline{${display}}}`);
-    } else {
-      parts.push(`\\href{${header.linkedIn}}{${icon}${display}}`);
-    }
+    parts.push(
+      hrefPart(
+        escapeHrefUrl(header.linkedIn),
+        escapeLatex(extractUsername(header.linkedIn, 'linkedin')),
+        icon,
+        style
+      )
+    );
   }
-  if (header.github) {
+  if (header.github?.trim()) {
     const icon = useIcons ? '\\seticon{faGithub} ' : '';
-    const display = escapeLatex(extractUsername(header.github, 'github'));
-    if (style === 'underline') {
-      parts.push(`\\href{${header.github}}{${icon}\\underline{${display}}}`);
-    } else {
-      parts.push(`\\href{${header.github}}{${icon}${display}}`);
-    }
+    parts.push(
+      hrefPart(
+        escapeHrefUrl(header.github),
+        escapeLatex(extractUsername(header.github, 'github')),
+        icon,
+        style
+      )
+    );
   }
-  
+  if (header.website?.trim()) {
+    const icon = useIcons ? '\\seticon{faGlobe} ' : '';
+    parts.push(
+      hrefPart(
+        escapeHrefUrl(header.website),
+        escapeLatex(header.website.replace(/^https?:\/\/(www\.)?/, '')),
+        icon,
+        style
+      )
+    );
+  }
+  if (header.blog?.trim()) {
+    const icon = useIcons ? '\\seticon{faRss} ' : '';
+    parts.push(
+      hrefPart(
+        escapeHrefUrl(header.blog),
+        escapeLatex(header.blog.replace(/^https?:\/\/(www\.)?/, '')),
+        icon,
+        style
+      )
+    );
+  }
   return parts;
 };
 
-export const getAtsContactParts = (header: Header, useIcons: boolean): string[] => {
-  const parts: string[] = [];
-
-  if (header.phone) {
+/** Line 1: auth · phone · email · location (+ sparse links). Line 2: links only if ≥3 filled. */
+export const getHeaderContactLines = (
+  header: Header,
+  useIcons: boolean,
+  style: ContactStyle = 'simple'
+): { line1: string[]; line2: string[] } => {
+  const line1: string[] = [];
+  if (header.workAuthorization?.trim()) {
+    line1.push(escapeLatex(header.workAuthorization.trim()));
+  }
+  if (header.phone?.trim()) {
     const icon = useIcons ? '\\seticon{faPhone} ' : '';
-    parts.push(`${icon}${escapeLatex(header.phone)}`);
+    line1.push(`${icon}${escapeLatex(header.phone.trim())}`);
   }
-  if (header.email) {
+  if (header.email?.trim()) {
     const icon = useIcons ? '\\seticon{faEnvelope} ' : '';
-    const email = escapeLatex(header.email);
-    parts.push(`${icon}\\href{mailto:${header.email}}{${email}}`);
+    const email = escapeLatex(header.email.trim());
+    line1.push(hrefPart(escapeHrefUrl(`mailto:${header.email.trim()}`), email, icon, style));
   }
-  if (header.linkedIn) {
-    const icon = useIcons ? '\\seticon{faLinkedin} ' : '';
-    const display = escapeLatex(extractUsername(header.linkedIn, 'linkedin'));
-    parts.push(`${icon}\\href{${header.linkedIn}}{${display}}`);
-  }
-  if (header.github) {
-    const icon = useIcons ? '\\seticon{faGithub} ' : '';
-    const display = escapeLatex(extractUsername(header.github, 'github'));
-    parts.push(`${icon}\\href{${header.github}}{${display}}`);
+  if (header.location?.trim()) {
+    line1.push(escapeLatex(header.location.trim()));
   }
 
-  return parts;
+  const linkParts = buildLinkParts(header, useIcons, style);
+  const filledLinkCount = [
+    header.linkedIn,
+    header.github,
+    header.website,
+    header.blog,
+  ].filter((value) => value?.trim()).length;
+
+  // ponytail: ≥3 of 4 link slots → own line; otherwise keep links on line 1
+  if (filledLinkCount >= 3) {
+    return { line1, line2: linkParts };
+  }
+  return { line1: [...line1, ...linkParts], line2: [] };
 };
+
+export const formatHeaderContactLatex = (
+  header: Header,
+  useIcons: boolean,
+  style: ContactStyle = 'simple',
+  sep = ' $\\cdot$ '
+): string => {
+  const { line1, line2 } = getHeaderContactLines(header, useIcons, style);
+  if (line1.length === 0 && line2.length === 0) return '';
+  if (line2.length === 0) return line1.join(sep);
+  return `${line1.join(sep)} \\\\ \\vspace{1pt}\n{\\small ${line2.join(sep)}}`;
+};
+
+/** @deprecated Prefer formatHeaderContactLatex */
+export const getContactParts = (
+  header: Header,
+  useIcons: boolean,
+  style: ContactStyle | 'icon-only' = 'simple'
+): string[] => {
+  const contactStyle: ContactStyle = style === 'icon-only' ? 'simple' : style;
+  const { line1, line2 } = getHeaderContactLines(header, useIcons, contactStyle);
+  return [...line1, ...line2];
+};
+
+/** @deprecated Prefer formatHeaderContactLatex */
+export const getAtsContactParts = (header: Header, useIcons: boolean): string[] =>
+  getContactParts(header, useIcons, 'simple');

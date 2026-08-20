@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ChevronLeft,
@@ -14,12 +14,13 @@ import {
   Globe,
   Save,
   Heart,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export type SidebarView = 'templates' | 'editor' | 'saved';
+export type SidebarView = 'templates' | 'parse' | 'editor' | 'saved';
 
 interface SidebarProps {
   activeView: SidebarView;
@@ -47,6 +48,29 @@ const AUTHOR_INFO = {
 };
 // ================================
 
+const THEME_EVENT = 'resumease-theme';
+
+const subscribeIsClient = (): (() => void) => () => {};
+const getIsClientSnapshot = (): boolean => true;
+const getIsClientServerSnapshot = (): boolean => false;
+
+const subscribeTheme = (onStoreChange: () => void): (() => void) => {
+  const handleChange = () => onStoreChange();
+  window.addEventListener('storage', handleChange);
+  window.addEventListener(THEME_EVENT, handleChange);
+  return () => {
+    window.removeEventListener('storage', handleChange);
+    window.removeEventListener(THEME_EVENT, handleChange);
+  };
+};
+
+const getIsDarkSnapshot = (): boolean => {
+  const savedTheme = localStorage.getItem('theme');
+  return savedTheme !== 'light';
+};
+
+const getIsDarkServerSnapshot = (): boolean => true;
+
 const NavItem = ({
   icon,
   label,
@@ -59,7 +83,7 @@ const NavItem = ({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center w-full gap-3 px-3 py-3 text-sm font-medium transition-colors rounded-md mx-2 relative overflow-hidden',
+        'flex items-center w-full gap-3 px-3 py-3 text-sm font-medium transition-colors mx-2 relative overflow-hidden',
         isCollapsed ? 'justify-center mx-1 px-2' : '',
         isActive
           ? 'bg-accent text-accent-foreground'
@@ -78,37 +102,31 @@ const NavItem = ({
 export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
   const { isSignedIn } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isDark, setIsDark] = useState(true); // Default to dark mode
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeIsClient,
+    getIsClientSnapshot,
+    getIsClientServerSnapshot
+  );
+  const isDark = useSyncExternalStore(
+    subscribeTheme,
+    getIsDarkSnapshot,
+    getIsDarkServerSnapshot
+  );
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const heartRef = useRef<HTMLButtonElement>(null);
 
+  // Sync React theme → document class (external system only; no setState).
   useEffect(() => {
-    setMounted(true);
-    const savedTheme = localStorage.getItem('theme');
-    
-    // Default to dark mode if no saved preference
-    if (savedTheme === 'dark' || !savedTheme) {
-      setIsDark(true);
-      document.documentElement.classList.add('dark');
-    } else if (savedTheme === 'light') {
-      setIsDark(false);
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
+    if (!mounted) return;
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [mounted, isDark]);
 
-  const toggleTheme = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
-
-    if (newIsDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+  const handleToggleTheme = () => {
+    const nextIsDark = !isDark;
+    localStorage.setItem('theme', nextIsDark ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', nextIsDark);
+    window.dispatchEvent(new Event(THEME_EVENT));
   };
 
   return (
@@ -137,13 +155,20 @@ export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex flex-col gap-1 py-2 overflow-hidden">
+      <nav className="flex w-full flex-col gap-1 py-2 items-center justify-center">
         <NavItem
           icon={<LayoutTemplate className="h-4 w-4 shrink-0" aria-hidden="true" />}
           label="Templates"
           isActive={activeView === 'templates'}
           isCollapsed={isCollapsed}
           onClick={() => onViewChange('templates')}
+        />
+        <NavItem
+          icon={<ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />}
+          label="Parse"
+          isActive={activeView === 'parse'}
+          isCollapsed={isCollapsed}
+          onClick={() => onViewChange('parse')}
         />
         <NavItem
           icon={<FileEdit className="h-4 w-4 shrink-0" aria-hidden="true" />}
@@ -173,7 +198,7 @@ export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
           <Button
             variant="ghost"
             size={isCollapsed ? 'icon' : 'sm'}
-            onClick={toggleTheme}
+            onClick={handleToggleTheme}
             className={cn(
               'w-full mb-2',
               isCollapsed ? 'h-10 w-10 mx-auto' : 'justify-start gap-2'

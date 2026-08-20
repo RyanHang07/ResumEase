@@ -19,7 +19,7 @@ export const AddSectionButton = ({ onAdd }: AddSectionButtonProps) => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className="w-full border-dashed border-2 h-12"
+          className="h-9 w-full border-2 border-dashed"
           aria-label="Add new section"
           tabIndex={0}
         >

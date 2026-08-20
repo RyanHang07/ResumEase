@@ -2,12 +2,16 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Resume } from '@/types/resume';
-import { generateLatex } from '@/lib/latex-generator';
+import { extractPdfText } from '@/lib/pdfExtract';
+import { analyzePdfRoundTrip } from '@/lib/pdfRoundTrip';
+import type { PdfRoundTripResult } from '@/lib/pdfRoundTrip';
 
 interface UseLatexCompileReturn {
   pdfUrl: string | null;
   isCompiling: boolean;
   error: string | null;
+  pdfRoundTrip: PdfRoundTripResult | null;
+  isExtracting: boolean;
   compile: () => Promise<void>;
   downloadPdf: () => void;
 }
@@ -21,22 +25,24 @@ export const useLatexCompile = (
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pdfRoundTrip, setPdfRoundTrip] = useState<PdfRoundTripResult | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousUrlRef = useRef<string | null>(null);
+  const extractRequestRef = useRef(0);
 
   const compile = useCallback(async () => {
     if (!enabled) return;
 
     setIsCompiling(true);
     setError(null);
+    setPdfRoundTrip(null);
 
     try {
-      const latexCode = generateLatex(resume, templateId);
-
       const response = await fetch('/api/compile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ latexCode }),
+        body: JSON.stringify({ resume, templateId }),
       });
 
       if (!response.ok) {
@@ -47,13 +53,30 @@ export const useLatexCompile = (
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
 
-      // Revoke old URL to prevent memory leaks
       if (previousUrlRef.current) {
         URL.revokeObjectURL(previousUrlRef.current);
       }
       previousUrlRef.current = url;
 
       setPdfUrl(url);
+
+      const requestId = extractRequestRef.current + 1;
+      extractRequestRef.current = requestId;
+      setIsExtracting(true);
+      try {
+        const snapshot = await extractPdfText(url);
+        if (extractRequestRef.current !== requestId) return;
+        setPdfRoundTrip(analyzePdfRoundTrip(resume, snapshot));
+      } catch (extractError) {
+        console.error('PDF extract error:', extractError);
+        if (extractRequestRef.current === requestId) {
+          setPdfRoundTrip(null);
+        }
+      } finally {
+        if (extractRequestRef.current === requestId) {
+          setIsExtracting(false);
+        }
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
@@ -63,9 +86,7 @@ export const useLatexCompile = (
     }
   }, [enabled, resume, templateId]);
 
-  // Debounced compilation on resume changes
   useEffect(() => {
-    // Clear any existing timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
@@ -74,7 +95,6 @@ export const useLatexCompile = (
       return;
     }
 
-    // Only compile if we have some content
     const hasContent =
       resume.header.name ||
       resume.header.email ||
@@ -84,7 +104,6 @@ export const useLatexCompile = (
       return;
     }
 
-    // Set up debounced compilation
     debounceTimerRef.current = setTimeout(() => {
       compile();
     }, debounceMs);
@@ -96,7 +115,6 @@ export const useLatexCompile = (
     };
   }, [enabled, resume, templateId, debounceMs, compile]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (previousUrlRef.current) {
@@ -120,6 +138,8 @@ export const useLatexCompile = (
     pdfUrl,
     isCompiling,
     error,
+    pdfRoundTrip,
+    isExtracting,
     compile,
     downloadPdf,
   };

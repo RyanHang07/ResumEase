@@ -7,6 +7,9 @@ import {
   createDefaultSkillsSection,
 } from '@/types/resume';
 import { createSampleResume } from '@/lib/sampleData';
+import { migrateResume } from '@/lib/migrations';
+import { applySafeParseFixes } from '@/lib/parseFixes';
+import { resolveCompileTemplateId } from '@/lib/latex-generator';
 
 interface ResumeStore {
   resume: Resume;
@@ -16,6 +19,10 @@ interface ResumeStore {
   updateSection: (sectionId: string, data: Partial<Section>) => void;
   removeSection: (sectionId: string) => void;
   reorderSections: (sections: Section[]) => void;
+  updateJobTarget: (jobTarget: Resume['jobTarget']) => void;
+  updateCoverLetter: (coverLetter: string | undefined) => void;
+  applyParserFixes: () => void;
+  applyLinkVerification: (results: Array<{ url: string; ok: boolean }>) => void;
   importResume: (resume: Resume) => void;
   resetResume: () => void;
   setTemplate: (templateId: string) => void;
@@ -84,12 +91,59 @@ export const useResumeStore = create<ResumeStore>()((set) => ({
       },
     })),
 
-  importResume: (resume) =>
-    set({
+  updateJobTarget: (jobTarget) =>
+    set((state) => ({
       resume: {
-        ...resume,
+        ...state.resume,
+        jobTarget,
         lastModified: new Date(),
       },
+    })),
+
+  updateCoverLetter: (coverLetter) =>
+    set((state) => ({
+      resume: {
+        ...state.resume,
+        coverLetter,
+        lastModified: new Date(),
+      },
+    })),
+
+  applyParserFixes: () =>
+    set((state) => ({
+      resume: applySafeParseFixes(state.resume),
+    })),
+
+  applyLinkVerification: (results) =>
+    set((state) => {
+      const byUrl = new Map(
+        results.map((result) => [result.url.trim().toLowerCase(), result.ok] as const)
+      );
+      return {
+        resume: {
+          ...state.resume,
+          sections: state.resume.sections.map((section) => {
+            if (section.type !== 'standard') return section;
+            return {
+              ...section,
+              entries: section.entries.map((entry) => ({
+                ...entry,
+                links: entry.links?.map((link) => {
+                  const verified = byUrl.get(link.url.trim().toLowerCase());
+                  if (verified === undefined) return link;
+                  return { ...link, verified };
+                }),
+              })),
+            };
+          }),
+          lastModified: new Date(),
+        },
+      };
+    }),
+
+  importResume: (resume) =>
+    set({
+      resume: applySafeParseFixes(migrateResume(resume)),
     }),
 
   resetResume: () =>
@@ -99,7 +153,7 @@ export const useResumeStore = create<ResumeStore>()((set) => ({
 
   setTemplate: (templateId) =>
     set({
-      currentTemplate: templateId,
+      currentTemplate: resolveCompileTemplateId(templateId),
     }),
 
   loadSampleData: (sampleResume) =>

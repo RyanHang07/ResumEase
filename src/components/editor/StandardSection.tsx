@@ -82,7 +82,7 @@ export const StandardSection = ({
 
   useEffect(() => {
     if (!pendingFocusEntryId) return;
-    const el = document.getElementById(`title-${pendingFocusEntryId}`);
+    const el = document.getElementById(`primary-${pendingFocusEntryId}`);
     if (el && el instanceof HTMLInputElement) {
       el.focus();
     }
@@ -90,8 +90,8 @@ export const StandardSection = ({
   }, [pendingFocusEntryId]);
 
   return (
-    <Card ref={setNodeRef} style={style} className="overflow-hidden">
-      <CardHeader className="flex flex-row items-center gap-2 p-4 bg-muted/50">
+    <Card ref={setNodeRef} style={style} className="gap-0 overflow-hidden py-0">
+      <CardHeader className="flex flex-row items-center gap-2 px-3 py-2 bg-muted/50">
         <button
           {...attributes}
           {...listeners}
@@ -100,7 +100,7 @@ export const StandardSection = ({
           tabIndex={0}
           suppressHydrationWarning
         >
-          <GripVertical className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <GripVertical className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         </button>
 
         {isEditingName ? (
@@ -116,7 +116,7 @@ export const StandardSection = ({
           />
         ) : (
           <h3
-            className="flex-1 font-semibold text-lg cursor-pointer hover:text-primary transition-colors"
+            className="flex-1 font-semibold text-base cursor-pointer hover:text-primary transition-colors"
             onClick={() => setIsEditingName(true)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -162,11 +162,12 @@ export const StandardSection = ({
       </CardHeader>
 
       {!isCollapsed && (
-        <CardContent id={contentId} className="p-4 space-y-4">
+        <CardContent id={contentId} className="p-3 space-y-3">
           {(section.entries ?? []).map((entry, index) => (
             <StandardEntry
               key={entry.id}
               entry={entry}
+              sectionName={section.sectionName}
               onUpdate={(data) => handleUpdateEntry(entry.id, data)}
               onRemove={() => handleRemoveEntry(entry.id)}
               entryIndex={index}
@@ -176,6 +177,7 @@ export const StandardSection = ({
           <Button
             onClick={handleAddEntry}
             variant="outline"
+            size="sm"
             className="w-full"
             aria-label="Add new entry"
             tabIndex={0}

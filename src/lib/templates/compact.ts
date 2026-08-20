@@ -1,10 +1,19 @@
 import { Resume } from '@/types/resume';
-import { escapeLatex, getAtsLatexPreamble, getCredits, getContactParts } from './shared';
+import { headerUsesIcons } from '@/lib/resumeDisplay';
+import {
+  escapeLatex,
+  escapeLatexInline,
+  formatHeaderContactLatex,
+  getAtsLatexPreamble,
+  getCredits,
+  normalizeSectionName,
+} from './shared';
+import { getLatexEntryParts } from './entryLatex';
 
 export const generateCompactLatex = (resume: Resume): string => {
-  const useIcons = resume.header.useIcons ?? true;
+  const useIcons = headerUsesIcons(resume.header);
   const sortedSections = [...resume.sections].sort((a, b) => a.order - b.order);
-  const contactParts = getContactParts(resume.header, useIcons, 'underline');
+  const contactBlock = formatHeaderContactLatex(resume.header, useIcons, 'underline', ' $|$ ');
 
   const sections = sortedSections.map((section) => {
     if (section.type === 'skills') {
@@ -14,14 +23,42 @@ export const generateCompactLatex = (resume: Resume): string => {
       return `\\section{${escapeLatex(section.sectionName)}}\n    \\begin{itemize}[leftmargin=0.15in, label={}]\n    \\small{\\item{\n${lines}\n    }}\n    \\end{itemize}`;
     } else {
       if (section.entries.length === 0) return '';
-      const isProject = section.sectionName.toLowerCase().includes('project');
-      const entries = section.entries.map(e => {
-        const bullets = e.bulletPoints.filter(b => b.trim()).map(b => `        \\resumeItem{${escapeLatex(b)}}`).join('\n');
+      const isProject = normalizeSectionName(section.sectionName) === 'projects';
+      const entries = section.entries.map((entry) => {
+        const parts = getLatexEntryParts(entry, section.sectionName);
+        const bullets = parts.bullets
+          .map((b) => `        \\resumeItem{${escapeLatexInline(b)}}`)
+          .join('\n');
+        const bulletBlock = bullets
+          ? `    \\resumeItemListStart\n${bullets}\n    \\resumeItemListEnd`
+          : '';
         if (isProject) {
-          const tech = e.organization ? ` $|$ \\emph{${escapeLatex(e.organization)}}` : '';
-          return `    \\resumeProjectHeading\n    {\\textbf{${escapeLatex(e.title)}}${tech}}{${escapeLatex(e.dateRange || '')}}\n    \\resumeItemListStart\n${bullets}\n    \\resumeItemListEnd`;
+          const tech = parts.secondaryLatex ? ` $|$ \\emph{${parts.secondaryLatex}}` : '';
+          return `    \\resumeProjectHeading\n    {${parts.primaryLatex}${tech}}{${parts.datesLatex}}\n${bulletBlock}`;
         }
-        return `    \\resumeSubheading\n    {${escapeLatex(e.title)}}{${escapeLatex(e.dateRange || '')}}\n    {${escapeLatex(e.organization || '')}}{}\n    \\resumeItemListStart\n${bullets}\n    \\resumeItemListEnd`;
+
+        // Education body: same vertical rhythm as experience bullets (itemize after -7pt),
+        // flush left, Coursework label semibold — not italic degree styling.
+        const educationExtraItems = [
+          parts.educationMetaLatex
+            ? `        \\item\\small{${parts.educationMetaLatex}}`
+            : '',
+          parts.courseworkLatex
+            ? `        \\item\\small{\\textbf{Coursework:} ${parts.courseworkLatex}}`
+            : '',
+        ].filter(Boolean);
+        const educationExtrasBlock =
+          educationExtraItems.length > 0
+            ? `    \\begin{itemize}[leftmargin=0pt, label={}, topsep=2pt, itemsep=1pt, parsep=0pt, partopsep=0pt]\n${educationExtraItems.join('\n')}\n    \\end{itemize}\n`
+            : '';
+        // When extras precede bullets, kill the second list's top gap so it feels like one block
+        const educationBulletBlock = bullets
+          ? educationExtraItems.length > 0
+            ? `    \\begin{itemize}[topsep=0pt, itemsep=0pt, parsep=0pt, partopsep=0pt]\n${bullets}\n    \\end{itemize}\\vspace{-5pt}\n`
+            : bulletBlock
+          : '';
+
+        return `    \\resumeSubheading\n    {${parts.linkedPrimary}}{${parts.datesLatex}}\n    {${parts.secondaryLatex}}{}\n${educationExtrasBlock}${educationBulletBlock || bulletBlock}`;
       }).join('\n\n');
       return `\\section{${escapeLatex(section.sectionName)}}\n\\resumeSubHeadingListStart\n${entries}\n\\resumeSubHeadingListEnd`;
     }
@@ -70,7 +107,7 @@ ${useIcons ? '\\definecolor{IconColor}{RGB}{0, 0, 0}\n\\newcommand{\\seticon}[1]
 
 \\begin{center}
 \\textbf{\\Huge \\scshape ${escapeLatex(resume.header.name)}} \\\\ \\vspace{1pt}
-${contactParts.join(' \\quad\n')}
+${contactBlock}
 \\end{center}
 
 ${sections}

@@ -1,16 +1,18 @@
-import { Resume } from '@/types/resume';
+import { CURRENT_SCHEMA_VERSION, type Resume } from '@/types/resume';
 
-// Sample resume data with prefilled content for demonstration
-// Using static IDs to prevent hydration mismatch between server and client
 export const createSampleResume = (): Resume => ({
+  schemaVersion: CURRENT_SCHEMA_VERSION,
   id: 'sample-resume-001',
   header: {
     name: 'Alex Johnson',
     email: 'alex.johnson@email.com',
     phone: '(555) 123-4567',
+    location: 'San Jose, CA',
     linkedIn: 'https://linkedin.com/in/alexjohnson',
     github: 'https://github.com/alexjohnson',
-    useIcons: true,
+    website: 'https://alexjohnson.dev',
+    workAuthorization: 'Eligible for CPT',
+    iconMode: 'icon-and-text',
   },
   sections: [
     {
@@ -22,11 +24,19 @@ export const createSampleResume = (): Resume => ({
         {
           id: 'entry-edu-001',
           title: 'State University',
-          organization: 'Bachelor of Science in Computer Science',
-          dateRange: 'May 2019',
-          bulletPoints: [
-            'Relevant Coursework: Data Structures, Algorithms, Database Systems, Web Development, Machine Learning',
+          organization: 'State University',
+          role: 'B.S. Computer Science',
+          dates: { start: '2023-09', end: '2027-05' },
+          expectedGraduation: '2027-05',
+          gpa: 3.8,
+          coursework: [
+            'Data Structures',
+            'Algorithms',
+            'Database Systems',
+            'Web Development',
+            'Machine Learning',
           ],
+          bulletPoints: [],
         },
       ],
     },
@@ -39,23 +49,25 @@ export const createSampleResume = (): Resume => ({
         {
           id: 'entry-exp-001',
           title: 'Tech Company Inc.',
-          organization: 'Senior Software Engineer',
-          dateRange: 'Jan 2022 -- Present',
+          organization: 'Tech Company Inc.',
+          role: 'Software Engineering Intern',
+          location: 'San Jose, CA',
+          dates: { start: '2025-06', end: '2025-08' },
           bulletPoints: [
-            'Led development of microservices architecture serving 1M+ daily active users, reducing latency by 40%',
-            'Mentored team of 5 junior developers, improving code review efficiency and reducing bug rate by 25%',
-            'Implemented CI/CD pipeline reducing deployment time from 2 hours to 15 minutes',
+            'Built internal tooling that cut review time by 25% across a 5-person intern pod',
+            'Shipped a CI check that caught 12 production-blocking type errors before merge',
           ],
         },
         {
           id: 'entry-exp-002',
           title: 'Startup Labs',
-          organization: 'Software Engineer',
-          dateRange: 'Jun 2019 -- Dec 2021',
+          organization: 'Startup Labs',
+          role: 'Software Engineering Intern',
+          location: 'Remote',
+          dates: { start: '2024-06', end: '2024-08' },
           bulletPoints: [
-            'Built RESTful APIs using Node.js and Express, handling 50K requests per minute with 99.9% uptime',
-            'Developed responsive web applications using React and TypeScript for 100K+ monthly users',
-            'Collaborated with product team to define technical requirements and deliver features on schedule',
+            'Built REST APIs in Node.js handling 50K requests per minute with 99.9% uptime',
+            'Shipped React/TypeScript UI used by 100K+ monthly users',
           ],
         },
       ],
@@ -68,24 +80,26 @@ export const createSampleResume = (): Resume => ({
       entries: [
         {
           id: 'entry-proj-001',
-          title: 'E-Commerce Platform',
-          organization: 'Next.js, PostgreSQL, Stripe, Tailwind CSS',
-          dateRange: '',
+          title: 'Campus Course Planner',
+          organization: '',
+          dates: { start: '2024-09', end: '2025-03' },
+          techStack: ['Next.js', 'PostgreSQL', 'Stripe', 'Tailwind CSS'],
+          links: [{ label: 'repo', url: 'https://github.com/alexjohnson/course-planner' }],
           bulletPoints: [
-            'Full-stack e-commerce application with user authentication, shopping cart, and payment processing',
-            'Implemented server-side rendering for SEO optimization, achieving 95+ Lighthouse score',
-            'Deployed on Vercel with automated CI/CD, handling 10K+ monthly transactions',
+            'Full-stack planner with auth, waitlist tracking, and schedule export',
+            'Server-side rendering for SEO, 95+ Lighthouse performance',
           ],
         },
         {
           id: 'entry-proj-002',
-          title: 'Real-time Chat Application',
-          organization: 'React, Socket.io, Node.js, MongoDB',
-          dateRange: '',
+          title: 'Realtime Study Group Chat',
+          organization: '',
+          dates: { start: '2024-01', end: '2024-05' },
+          techStack: ['React', 'Socket.io', 'Node.js', 'MongoDB'],
+          links: [{ label: 'demo', url: 'https://chat.alexjohnson.dev' }],
           bulletPoints: [
-            'Built real-time messaging platform supporting 1000+ concurrent users with WebSocket connections',
-            'Implemented end-to-end encryption for secure message transmission',
-            'Added features including group chats, file sharing, and message search functionality',
+            'Websocket rooms supporting 1000+ concurrent users',
+            'Group chats, file sharing, and message search',
           ],
         },
       ],
@@ -132,10 +146,8 @@ export const createSampleResume = (): Resume => ({
   lastModified: new Date('2024-01-01T00:00:00.000Z'),
 });
 
-// Template-specific sample data can be added here
 export const templateSampleData: Record<string, () => Resume> = {
   classic: createSampleResume,
-  // Add more templates with their sample data here
 };
 
 export const getSampleDataForTemplate = (templateId: string): Resume => {

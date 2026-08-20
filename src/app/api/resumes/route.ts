@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { del, get, list, put } from '@vercel/blob';
 import { auth } from '@clerk/nextjs/server';
 import { Resume, SavedResume } from '@/types/resume';
+import { migrateResume } from '@/lib/migrations';
 
 const MAX_RESUMES = 5;
 const MAX_RESUME_PAYLOAD_LENGTH = 100_000;
@@ -55,7 +56,15 @@ export async function GET() {
       const { blobs } = await list({ prefix: `resumes/${userId}/`, limit: 100 });
       const resumes = (
         await Promise.all(blobs.map((blob) => readBlobJson<SavedResume>(blob.pathname)))
-      ).filter((resume): resume is SavedResume => resume !== null);
+      ).flatMap((resume) => {
+        if (!resume) return [];
+        try {
+          return [{ ...resume, data: migrateResume(resume.data) }];
+        } catch (error) {
+          console.error('Failed to migrate saved resume', resume.id, error);
+          return [];
+        }
+      });
 
       return NextResponse.json({ resumes });
     } catch (storageError) {
@@ -135,11 +144,21 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      let migratedData: Resume;
+      try {
+        migratedData = migrateResume(data);
+      } catch {
+        return NextResponse.json(
+          { error: 'Invalid resume payload' },
+          { status: 400 }
+        );
+      }
+
       const newResume: SavedResume = {
         id: crypto.randomUUID(),
         name: name.trim(),
         templateId,
-        data,
+        data: migratedData,
         savedAt: new Date().toISOString(),
       };
 

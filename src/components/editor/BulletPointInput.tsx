@@ -28,7 +28,7 @@ export const BulletPointInput = ({
 
   return (
     <div className="flex gap-2 items-start">
-      <div className="flex items-center pt-2 text-muted-foreground" aria-hidden="true">
+      <div className="flex items-center pt-1.5 text-muted-foreground" aria-hidden="true">
         <span className="text-sm">•</span>
       </div>
       <Textarea
@@ -36,8 +36,8 @@ export const BulletPointInput = ({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Describe your achievement or responsibility..."
-        className="flex-1 min-h-[60px] resize-none"
-        rows={2}
+        className="min-h-9 flex-1 resize-y py-1.5"
+        rows={1}
         aria-label={`Bullet point ${index + 1}`}
         tabIndex={0}
       />

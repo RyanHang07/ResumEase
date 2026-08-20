@@ -1,18 +1,11 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, FileJson, LocateFixed, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import type {
-  Header,
-  Resume,
-  Section,
-  SkillCategory,
-  SkillsSection,
-  StandardEntry,
-  StandardSection,
-} from '@/types/resume';
+import { migrateResume } from '@/lib/migrations';
+import type { Resume } from '@/types/resume';
 
 interface JsonEditorPanelProps {
   resume: Resume;
@@ -20,115 +13,14 @@ interface JsonEditorPanelProps {
   onErrorStateChange?: (hasErrors: boolean) => void;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const asString = (value: unknown, fallback = ''): string =>
-  typeof value === 'string' ? value : fallback;
-
-const asStringArray = (value: unknown): string[] => {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === 'string');
-};
-
-const createId = (prefix: string): string => `${prefix}-${crypto.randomUUID()}`;
-
-const normalizeHeader = (value: unknown): Header => {
-  if (!isRecord(value)) {
-    throw new Error('JSON must include a valid header object.');
-  }
-
-  return {
-    name: asString(value.name),
-    email: asString(value.email),
-    phone: asString(value.phone),
-    linkedIn: asString(value.linkedIn),
-    github: asString(value.github),
-    useIcons: typeof value.useIcons === 'boolean' ? value.useIcons : true,
-  };
-};
-
-const normalizeStandardEntry = (value: unknown): StandardEntry => {
-  if (!isRecord(value)) {
-    throw new Error('Each standard entry must be an object.');
-  }
-
-  return {
-    id: asString(value.id, createId('entry')),
-    title: asString(value.title),
-    organization: asString(value.organization),
-    dateRange: asString(value.dateRange),
-    bulletPoints: asStringArray(value.bulletPoints),
-  };
-};
-
-const normalizeSkillCategory = (value: unknown): SkillCategory => {
-  if (!isRecord(value)) {
-    throw new Error('Each skill category must be an object.');
-  }
-
-  return {
-    id: asString(value.id, createId('category')),
-    categoryName: asString(value.categoryName),
-    skills: asStringArray(value.skills),
-  };
-};
-
-const normalizeSection = (value: unknown, index: number): Section => {
-  if (!isRecord(value)) {
-    throw new Error('Each section must be an object.');
-  }
-
-  const baseSection = {
-    id: asString(value.id, createId('section')),
-    sectionName: asString(value.sectionName, 'Untitled Section'),
-    order: typeof value.order === 'number' ? value.order : index,
-  };
-
-  if (value.type === 'skills') {
-    if (!Array.isArray(value.categories)) {
-      throw new Error('Skills sections must include a categories array.');
-    }
-
-    return {
-      ...baseSection,
-      type: 'skills',
-      categories: value.categories.map(normalizeSkillCategory),
-    } satisfies SkillsSection;
-  }
-
-  if (value.type === 'standard') {
-    if (!Array.isArray(value.entries)) {
-      throw new Error('Standard sections must include an entries array.');
-    }
-
-    return {
-      ...baseSection,
-      type: 'standard',
-      entries: value.entries.map(normalizeStandardEntry),
-    } satisfies StandardSection;
-  }
-
-  throw new Error('Each section type must be either "standard" or "skills".');
-};
-
 const parseResumeJson = (draft: string): Resume => {
   const parsed: unknown = JSON.parse(draft);
-
-  if (!isRecord(parsed)) {
-    throw new Error('JSON must describe a resume object.');
-  }
-  if (!Array.isArray(parsed.sections)) {
-    throw new Error('JSON must include a sections array.');
-  }
-
-  return {
-    id: asString(parsed.id, createId('resume')),
-    header: normalizeHeader(parsed.header),
-    sections: parsed.sections.map(normalizeSection),
-    lastModified: new Date(),
-  };
+  return migrateResume(parsed);
 };
+
+const resumeToEditorJson = (resume: Resume): string =>
+  // Remigrate so deprecated header fields (expectedGraduation/gpa) are never shown
+  JSON.stringify(migrateResume(resume), null, 2);
 
 const getLineFromJsonError = (message: string, draft: string): number | null => {
   const lineMatch = message.match(/line\s+(\d+)/i);
@@ -155,7 +47,7 @@ export const JsonEditorPanel = ({
   onApply,
   onErrorStateChange,
 }: JsonEditorPanelProps) => {
-  const initialJson = useMemo(() => JSON.stringify(resume, null, 2), [resume]);
+  const initialJson = useMemo(() => resumeToEditorJson(resume), [resume]);
   const [draft, setDraft] = useState(initialJson);
   const lineNumbers = useMemo(
     () => Array.from({ length: draft.split('\n').length }, (_, index) => index + 1),
@@ -167,6 +59,14 @@ export const JsonEditorPanel = ({
   const [errorLine, setErrorLine] = useState<number | null>(null);
   const [isJumpingToError, setIsJumpingToError] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Sync draft when a different resume is loaded (prefer sync over remount for undo UX).
+  useEffect(() => {
+    setDraft(resumeToEditorJson(resume));
+    setError(null);
+    setErrorLine(null);
+    setSuccessMessage(null);
+  }, [resume.id]);
 
   const handleJumpToErrorLine = () => {
     if (!errorLine || !textareaRef.current) return;
@@ -299,7 +199,7 @@ export const JsonEditorPanel = ({
             <span>{successMessage}</span>
           </div>
         )}
-        <div className="flex min-h-[420px] flex-1 overflow-hidden rounded-md border border-input bg-transparent focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+        <div className="flex min-h-105 flex-1 overflow-hidden rounded-md border border-input bg-transparent focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
           <div
             ref={lineNumberRef}
             className="select-none overflow-hidden border-r bg-muted/40 py-2 font-mono text-xs leading-relaxed text-muted-foreground"
@@ -334,7 +234,7 @@ export const JsonEditorPanel = ({
               }
             }}
             spellCheck={false}
-            className="min-h-[420px] flex-1 resize-none overflow-auto rounded-none border-0 font-mono text-xs leading-relaxed shadow-none focus-visible:ring-0 md:text-xs"
+            className="min-h-105 flex-1 resize-none overflow-auto rounded-none border-0 font-mono text-xs leading-relaxed shadow-none focus-visible:ring-0 md:text-xs"
             aria-label="Resume JSON"
             aria-invalid={!!error}
             aria-describedby={

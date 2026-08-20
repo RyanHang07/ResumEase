@@ -67,7 +67,7 @@ export const EditorPanel = ({
   const sortedSections = [...resume.sections].sort((a, b) => a.order - b.order);
 
   return (
-    <div className="h-full overflow-y-auto p-6 space-y-6 bg-background">
+    <div className="h-full overflow-y-auto p-3 space-y-3 bg-background">
       {/* Header Section - Always First */}
       <HeaderForm header={resume.header} onChange={onUpdateHeader} />
 
@@ -81,7 +81,7 @@ export const EditorPanel = ({
           items={sortedSections.map((s) => s.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="space-y-4">
+          <div className="space-y-3">
             {sortedSections.map((section) =>
               section.type === 'standard' ? (
                 <StandardSection

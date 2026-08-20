@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { SignedIn } from '@clerk/nextjs';
-import { FileEdit, FileJson, FileText, LayoutTemplate, Save } from 'lucide-react';
+import { FileEdit, FileJson, FileText, LayoutTemplate, Save, ShieldCheck } from 'lucide-react';
 import { useResumeStore } from '@/store/resumeStore';
 import { useLatexCompile } from '@/hooks/useLatexCompile';
 import { useAutoSave } from '@/hooks/useAutoSave';
@@ -13,6 +13,7 @@ import { JsonEditorPanel } from '@/components/preview/JsonEditorPanel';
 import { JsonErrorLeaveDialog } from '@/components/preview/JsonErrorLeaveDialog';
 import { Sidebar, SidebarView } from '@/components/layout/Sidebar';
 import { TemplatesPanel } from '@/components/layout/TemplatesPanel';
+import { ParseReadinessPanel } from '@/components/layout/ParseReadinessPanel';
 import { SavedResumesPanel } from '@/components/layout/SavedResumesPanel';
 import { Toolbar } from '@/components/layout/Toolbar';
 import { exportResumeAsJson, importResumeFromJson } from '@/lib/storage';
@@ -79,6 +80,10 @@ export default function HomePage() {
     importResume,
     resetResume,
     setTemplate,
+    updateJobTarget,
+    updateCoverLetter,
+    applyParserFixes,
+    applyLinkVerification,
   } = useResumeStore();
 
   useEffect(() => {
@@ -93,12 +98,8 @@ export default function HomePage() {
 
   const isPdfPreviewActive =
     previewMode === 'pdf' && (isLargeScreen || mobileView === 'preview');
-  const { pdfUrl, isCompiling, error, downloadPdf, compile } = useLatexCompile(
-    resume,
-    currentTemplate,
-    1000,
-    isPdfPreviewActive
-  );
+  const { pdfUrl, isCompiling, error, downloadPdf, compile, pdfRoundTrip, isExtracting } =
+    useLatexCompile(resume, currentTemplate, 1000, isPdfPreviewActive);
   const { isSaving, lastSaved } = useAutoSave(resume);
 
   const runWithJsonErrorGuard = useCallback(
@@ -212,7 +213,22 @@ export default function HomePage() {
         <TemplatesPanel
           selectedTemplate={currentTemplate}
           onSelectTemplate={handleSelectTemplate}
+        />
+      );
+    }
+
+    if (activeView === 'parse') {
+      return (
+        <ParseReadinessPanel
+          selectedTemplate={currentTemplate}
+          onSelectTemplate={handleSelectTemplate}
           resume={resume}
+          onApplyParserFixes={applyParserFixes}
+          onUpdateJobTarget={updateJobTarget}
+          onUpdateCoverLetter={updateCoverLetter}
+          onApplyLinkVerification={applyLinkVerification}
+          pdfRoundTrip={pdfRoundTrip}
+          isExtractingPdf={isExtracting}
         />
       );
     }
@@ -310,6 +326,13 @@ export default function HomePage() {
             label="Templates"
             controlsId="mobile-workspace-panel"
           />
+          <ViewToggleButton
+            isActive={mobileView === 'parse'}
+            onClick={() => handleMobileViewChange('parse')}
+            icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}
+            label="Parse"
+            controlsId="mobile-workspace-panel"
+          />
           <SignedIn>
             <ViewToggleButton
               isActive={mobileView === 'saved'}
@@ -339,8 +362,8 @@ export default function HomePage() {
         {/* Collapsible Sidebar */}
         <Sidebar activeView={activeView} onViewChange={setActiveView} />
 
-        {/* Left Panel - Templates, Editor, or Saved */}
-        <div className="w-2/5 min-w-[300px] max-w-[500px] border-r overflow-hidden">
+        {/* Left Panel - Templates, Parse, Editor, or Saved */}
+        <div className="w-2/5 min-w-75 max-w-125 border-r overflow-hidden">
           {renderLeftPanel()}
         </div>
 

@@ -9,6 +9,14 @@ import {
   TabStopPosition,
 } from 'docx';
 import type { Resume, Section, StandardSection, SkillsSection } from '@/types/resume';
+import {
+  getEducationMetaParts,
+  getEntryDateText,
+  getEntryPrimaryText,
+  getEntrySecondaryText,
+  getHeaderContactPlainLines,
+} from '@/lib/resumeDisplay';
+import { normalizeSectionName } from '@/lib/templates/shared';
 
 const NAME_SIZE = 40;
 const CONTACT_SIZE = 22;
@@ -17,30 +25,36 @@ const BODY_SIZE = 22;
 const BULLET_SIZE = 20;
 
 const buildHeaderParagraphs = (resume: Resume): Paragraph[] => {
-  const { name, email, phone, linkedIn, github } = resume.header;
-  const contactParts: string[] = [];
-  if (email) contactParts.push(email);
-  if (phone) contactParts.push(phone);
-  if (linkedIn) contactParts.push(linkedIn);
-  if (github) contactParts.push(github);
-  const contactLine = contactParts.join('  •  ');
-
-  return [
+  const { name } = resume.header;
+  const { line1, line2 } = getHeaderContactPlainLines(resume.header);
+  const paragraphs: Paragraph[] = [
     new Paragraph({
       children: [new TextRun({ text: name || 'Resume', bold: true, size: NAME_SIZE })],
       alignment: AlignmentType.CENTER,
       spacing: { after: 60 },
     }),
-    ...(contactLine
-      ? [
-          new Paragraph({
-            children: [new TextRun({ text: contactLine, size: CONTACT_SIZE })],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 200 },
-          }),
-        ]
-      : []),
   ];
+
+  if (line1.length > 0) {
+    paragraphs.push(
+      new Paragraph({
+        children: [new TextRun({ text: line1.join('  •  '), size: CONTACT_SIZE })],
+        alignment: AlignmentType.CENTER,
+        spacing: { after: line2.length > 0 ? 40 : 200 },
+      })
+    );
+  }
+  if (line2.length > 0) {
+    paragraphs.push(
+      new Paragraph({
+        children: [new TextRun({ text: line2.join('  •  '), size: CONTACT_SIZE })],
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 200 },
+      })
+    );
+  }
+
+  return paragraphs;
 };
 
 const sectionTitle = (sectionName: string): Paragraph =>
@@ -56,20 +70,32 @@ const entryTitleTabStops = [{ position: TabStopPosition.MAX, type: TabStopType.R
 
 const buildStandardSectionParagraphs = (section: StandardSection): Paragraph[] => {
   const paragraphs: Paragraph[] = [sectionTitle(section.sectionName)];
-  const isProject = section.sectionName.toLowerCase().includes('project');
+  const isProject = normalizeSectionName(section.sectionName) === 'projects';
+  const isEducation = normalizeSectionName(section.sectionName) === 'education';
 
   for (const entry of section.entries) {
-    if (!entry.title && !entry.organization && !entry.dateRange && entry.bulletPoints.every((b) => !b.trim())) continue;
+    if (
+      !getEntryPrimaryText(entry, section.sectionName) &&
+      !getEntrySecondaryText(entry, section.sectionName) &&
+      !getEntryDateText(entry) &&
+      entry.bulletPoints.every((b) => !b.trim())
+    ) {
+      continue;
+    }
+
+    const primary = getEntryPrimaryText(entry, section.sectionName);
+    const secondary = getEntrySecondaryText(entry, section.sectionName);
+    const dates = getEntryDateText(entry);
 
     if (isProject) {
       const runs: TextRun[] = [
-        new TextRun({ text: entry.title, bold: true, size: BODY_SIZE }),
+        new TextRun({ text: primary, bold: true, size: BODY_SIZE }),
       ];
-      if (entry.organization?.trim()) {
+      if (secondary) {
         runs.push(new TextRun({ text: ' | ', size: BODY_SIZE }));
-        runs.push(new TextRun({ text: entry.organization, italics: true, size: BODY_SIZE }));
+        runs.push(new TextRun({ text: secondary, italics: true, size: BODY_SIZE }));
       }
-      runs.push(new TextRun({ text: `\t${entry.dateRange ?? ''}`, size: BODY_SIZE }));
+      runs.push(new TextRun({ text: `\t${dates}`, size: BODY_SIZE }));
       paragraphs.push(
         new Paragraph({
           children: runs,
@@ -81,17 +107,43 @@ const buildStandardSectionParagraphs = (section: StandardSection): Paragraph[] =
       paragraphs.push(
         new Paragraph({
           children: [
-            new TextRun({ text: entry.title, bold: true, size: BODY_SIZE }),
-            new TextRun({ text: `\t${entry.dateRange ?? ''}`, size: BODY_SIZE }),
+            new TextRun({ text: primary, bold: true, size: BODY_SIZE }),
+            new TextRun({ text: `\t${dates}`, size: BODY_SIZE }),
           ],
           tabStops: entryTitleTabStops,
           spacing: { before: 48, after: 12 },
         })
       );
-      if (entry.organization?.trim()) {
+      if (secondary) {
         paragraphs.push(
           new Paragraph({
-            children: [new TextRun({ text: entry.organization, italics: true, size: BODY_SIZE })],
+            children: [new TextRun({ text: secondary, italics: true, size: BODY_SIZE })],
+            spacing: { after: 24 },
+          })
+        );
+      }
+      if (isEducation) {
+        const educationMeta = getEducationMetaParts(entry).join(' · ');
+        if (educationMeta) {
+          paragraphs.push(
+            new Paragraph({
+              children: [new TextRun({ text: educationMeta, size: BULLET_SIZE })],
+              spacing: { after: 24 },
+            })
+          );
+        }
+      }
+      const coursework = (entry.coursework ?? []).map((item) => item.trim()).filter(Boolean);
+      if (coursework.length > 0) {
+        paragraphs.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `Coursework: ${coursework.join(', ')}`,
+                italics: true,
+                size: BULLET_SIZE,
+              }),
+            ],
             spacing: { after: 24 },
           })
         );

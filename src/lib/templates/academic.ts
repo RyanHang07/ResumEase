@@ -1,14 +1,16 @@
 import { Resume } from '@/types/resume';
-import { escapeLatex, getAtsLatexPreamble, getCredits, extractUsername } from './shared';
+import {
+  escapeLatex,
+  escapeLatexInline,
+  formatHeaderContactLatex,
+  getAtsLatexPreamble,
+  getCredits,
+} from './shared';
+import { getLatexEntryParts } from './entryLatex';
 
 export const generateAcademicLatex = (resume: Resume): string => {
   const sortedSections = [...resume.sections].sort((a, b) => a.order - b.order);
-
-  const contactLines: string[] = [];
-  if (resume.header.email) contactLines.push(`\\href{mailto:${resume.header.email}}{${escapeLatex(resume.header.email)}}`);
-  if (resume.header.phone) contactLines.push(escapeLatex(resume.header.phone));
-  if (resume.header.linkedIn) contactLines.push(`\\href{${resume.header.linkedIn}}{${escapeLatex(extractUsername(resume.header.linkedIn, 'linkedin'))}}`);
-  if (resume.header.github) contactLines.push(`\\href{${resume.header.github}}{${escapeLatex(extractUsername(resume.header.github, 'github'))}}`);
+  const contactBlock = formatHeaderContactLatex(resume.header, false, 'simple', ' $\\bullet$ ');
 
   const sections = sortedSections.map((section) => {
     if (section.type === 'skills') {
@@ -16,15 +18,39 @@ export const generateAcademicLatex = (resume: Resume): string => {
       if (cats.length === 0) return '';
       const lines = cats.map(c => `\\textbf{${escapeLatex(c.categoryName)}:} ${c.skills.map(escapeLatex).join(', ')}`).join(' \\\\\n');
       return `\\section{${escapeLatex(section.sectionName)}}\n${lines}`;
-    } else {
-      if (section.entries.length === 0) return '';
-      const entries = section.entries.map(e => {
-        const bullets = e.bulletPoints.filter(b => b.trim()).map(b => `\\item ${escapeLatex(b)}`).join('\n');
-        const bulletList = bullets ? `\\begin{itemize}[leftmargin=1.5em, topsep=2pt, itemsep=0pt, parsep=0pt]\n${bullets}\n\\end{itemize}` : '';
-        return `\\textbf{${escapeLatex(e.title)}} \\hfill ${escapeLatex(e.dateRange || '')} \\\\\n\\textit{${escapeLatex(e.organization || '')}}\n${bulletList}`;
-      }).join('\n\\vspace{4pt}\n');
-      return `\\section{${escapeLatex(section.sectionName)}}\n${entries}`;
     }
+
+    if (section.entries.length === 0) return '';
+    const entries = section.entries.map((entry) => {
+      const parts = getLatexEntryParts(entry, section.sectionName);
+      const bullets = parts.bullets
+        .map((b) => `\\item {${escapeLatexInline(b)}}`)
+        .join('\n');
+      const hasEducationExtras = Boolean(
+        parts.educationMetaLatex || parts.courseworkLatex
+      );
+      const educationExtraLines = [
+        parts.educationMetaLatex ? `{\\small ${parts.educationMetaLatex}}` : '',
+        parts.courseworkLatex
+          ? `{\\small\\textbf{Coursework:} ${parts.courseworkLatex}}`
+          : '',
+      ].filter(Boolean);
+      const educationExtras = educationExtraLines
+        .map((line, index) => {
+          const isLast = index === educationExtraLines.length - 1;
+          const needsBreak = !isLast || Boolean(bullets);
+          return needsBreak ? `${line} \\\\` : line;
+        })
+        .join('\n');
+      const educationExtrasBlock = educationExtras ? `${educationExtras}\n` : '';
+      // Experience uses topsep=2pt after degree; extras take that slot, then bullets topsep=0
+      const bulletList = bullets
+        ? `\\begin{itemize}[leftmargin=1.5em, topsep=${hasEducationExtras ? '0pt' : '2pt'}, itemsep=0pt, parsep=0pt]\n${bullets}\n\\end{itemize}`
+        : '';
+      const secondary = parts.secondaryLatex ? `\\textit{${parts.secondaryLatex}} \\\\\n` : '';
+      return `${parts.primaryLatex} \\hfill ${parts.datesLatex} \\\\\n${secondary}${educationExtrasBlock}${bulletList}`;
+    }).join('\n\\vspace{4pt}\n');
+    return `\\section{${escapeLatex(section.sectionName)}}\n${entries}`;
   }).filter(s => s).join('\n\n');
 
   return `${getCredits('Academic CV')}
@@ -47,7 +73,7 @@ ${getAtsLatexPreamble()}
 
 \\begin{center}
 {\\LARGE\\bfseries\\scshape ${escapeLatex(resume.header.name)}} \\\\[6pt]
-{\\small ${contactLines.join(' $\\bullet$ ')}}
+{\\small ${contactBlock}}
 \\end{center}
 
 \\vspace{4pt}

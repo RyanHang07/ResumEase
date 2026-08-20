@@ -115,8 +115,8 @@ export const SkillsSection = ({
   }, [pendingFocusCategoryId]);
 
   return (
-    <Card ref={setNodeRef} style={style} className="overflow-hidden">
-      <CardHeader className="flex flex-row items-center gap-2 p-4 bg-muted/50">
+    <Card ref={setNodeRef} style={style} className="gap-0 overflow-hidden py-0">
+      <CardHeader className="flex flex-row items-center gap-2 px-3 py-2 bg-muted/50">
         <button
           {...attributes}
           {...listeners}
@@ -125,7 +125,7 @@ export const SkillsSection = ({
           tabIndex={0}
           suppressHydrationWarning
         >
-          <GripVertical className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <GripVertical className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         </button>
 
         {isEditingName ? (
@@ -141,7 +141,7 @@ export const SkillsSection = ({
           />
         ) : (
           <h3
-            className="flex-1 font-semibold text-lg cursor-pointer hover:text-primary transition-colors"
+            className="flex-1 font-semibold text-base cursor-pointer hover:text-primary transition-colors"
             onClick={() => setIsEditingName(true)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -187,11 +187,11 @@ export const SkillsSection = ({
       </CardHeader>
 
       {!isCollapsed && (
-        <CardContent id={contentId} className="p-4 space-y-4">
+        <CardContent id={contentId} className="p-3 space-y-3">
           {section.categories.map((category) => (
             <fieldset
               key={category.id}
-              className="p-4 border rounded-lg bg-muted/30 space-y-3"
+              className="border rounded-lg bg-muted/30 p-3 space-y-2"
             >
               <legend className="sr-only">
                 Skill category {category.categoryName || 'Untitled category'}
@@ -208,7 +208,7 @@ export const SkillsSection = ({
                     })
                   }
                   placeholder="e.g., Languages, Frameworks, Tools"
-                  className="flex-1"
+                  className="h-8 flex-1"
                   aria-label="Category name"
                   tabIndex={0}
                 />
@@ -224,7 +224,7 @@ export const SkillsSection = ({
                 </Button>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor={`skills-${category.id}`}>
                   Skills (comma-separated)
                 </Label>
@@ -235,6 +235,7 @@ export const SkillsSection = ({
                   onFocus={() => handleSkillsFocus(category.id, category.skills)}
                   onBlur={() => handleSkillsBlur(category.id)}
                   placeholder="e.g., Python, JavaScript, React"
+                  className="h-8"
                   aria-label="Skills list"
                   tabIndex={0}
                 />
@@ -245,6 +246,7 @@ export const SkillsSection = ({
           <Button
             onClick={handleAddCategory}
             variant="outline"
+            size="sm"
             className="w-full"
             aria-label="Add new category"
             tabIndex={0}
