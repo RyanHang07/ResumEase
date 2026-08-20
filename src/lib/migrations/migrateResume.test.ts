@@ -91,12 +91,14 @@ describe('migrateResume v1 to v2', () => {
     if (education.type !== 'standard') throw new Error('expected standard');
     expect(education.entries[0].organization).toBe('State University');
     expect(education.entries[0].role).toBe('Bachelor of Science in Computer Science');
+    expect(education.entries[0].title).toBe('');
     expect(education.entries[0].dates).toEqual({ start: '2019-05', end: '2019-05' });
 
     const experience = migrated.sections[1];
     if (experience.type !== 'standard') throw new Error('expected standard');
     expect(experience.entries[0].organization).toBe('Tech Company Inc.');
     expect(experience.entries[0].role).toBe('Software Engineering Intern');
+    expect(experience.entries[0].title).toBe('');
     expect(experience.entries[0].dates).toEqual({ start: '2022-01', end: 'present' });
 
     const projects = migrated.sections[2];
@@ -113,6 +115,21 @@ describe('migrateResume v1 to v2', () => {
     if (experience.type !== 'standard') throw new Error('expected standard');
     expect(experience.entries[0].organization).toBe('Tech Company Inc.');
     expect(experience.entries[0].role).toBe('Software Engineering Intern');
+    expect(experience.entries[0].title).toBe('');
+  });
+
+  it('clears education/experience title when it only duplicated organization', () => {
+    const sample = createSampleResume();
+    const education = sample.sections[0];
+    if (education.type !== 'standard') throw new Error('expected standard');
+    education.entries[0].title = 'State University';
+    education.entries[0].organization = 'State University';
+
+    const migrated = migrateResume(sample);
+    const migratedEducation = migrated.sections[0];
+    if (migratedEducation.type !== 'standard') throw new Error('expected standard');
+    expect(migratedEducation.entries[0].organization).toBe('State University');
+    expect(migratedEducation.entries[0].title).toBe('');
   });
 
   it('maps useIcons false to iconMode none', () => {

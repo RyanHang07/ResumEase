@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { SignedIn } from '@clerk/nextjs';
 import { FileEdit, FileJson, FileText, LayoutTemplate, Save, ShieldCheck } from 'lucide-react';
@@ -21,6 +21,11 @@ import { downloadLatexSource } from '@/lib/latex-generator';
 import { downloadDocx } from '@/lib/docx-generator';
 import { Section, Resume } from '@/types/resume';
 import { cn } from '@/lib/utils';
+import {
+  hydrateResumeFromHashPayload,
+  parseHashFragment,
+} from '@/lib/hashResume';
+import type { StatusState } from '@/lib/jsonLoadState';
 
 type PreviewMode = 'pdf' | 'json';
 type MobileView = SidebarView | 'preview' | 'json';
@@ -64,10 +69,14 @@ export default function HomePage() {
   const [activeView, setActiveView] = useState<SidebarView>('editor');
   const [mobileView, setMobileView] = useState<MobileView>('editor');
   const [previewMode, setPreviewMode] = useState<PreviewMode>('pdf');
-  const [isLargeScreen, setIsLargeScreen] = useState(false);
   const [jsonHasErrors, setJsonHasErrors] = useState(false);
   const [pendingJsonLeaveAction, setPendingJsonLeaveAction] = useState<(() => void) | null>(null);
   const [isDocxExporting, setIsDocxExporting] = useState(false);
+  const [appliedEpoch, setAppliedEpoch] = useState(0);
+  const [epochSource, setEpochSource] = useState<'hash' | 'apply'>('hash');
+  const [hashStatus, setHashStatus] = useState<StatusState>('idle');
+  const [hashMessage, setHashMessage] = useState('');
+  const loadAttemptsRef = useRef({ latest: 0, lastHashPayload: null as string | null });
 
   const {
     resume,
@@ -86,21 +95,61 @@ export default function HomePage() {
     applyLinkVerification,
   } = useResumeStore();
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(min-width: 1024px)');
-    const handleMediaChange = () => setIsLargeScreen(mediaQuery.matches);
+  const { pdfUrl, isCompiling, error, downloadPdf, compile, pdfRoundTrip, isExtracting } =
+    useLatexCompile(resume, currentTemplate, 1000, true);
+  const { isSaving, lastSaved } = useAutoSave(resume);
 
-    handleMediaChange();
-    mediaQuery.addEventListener('change', handleMediaChange);
-
-    return () => mediaQuery.removeEventListener('change', handleMediaChange);
+  const beginLoadAttempt = useCallback(() => {
+    loadAttemptsRef.current.latest += 1;
+    return loadAttemptsRef.current.latest;
   }, []);
 
-  const isPdfPreviewActive =
-    previewMode === 'pdf' && (isLargeScreen || mobileView === 'preview');
-  const { pdfUrl, isCompiling, error, downloadPdf, compile, pdfRoundTrip, isExtracting } =
-    useLatexCompile(resume, currentTemplate, 1000, isPdfPreviewActive);
-  const { isSaving, lastSaved } = useAutoSave(resume);
+  const commitIfCurrent = useCallback(
+    (attemptId: number) => attemptId === loadAttemptsRef.current.latest,
+    []
+  );
+
+  const markExternalLoad = useCallback(() => {
+    setEpochSource('hash');
+    setAppliedEpoch((epoch) => epoch + 1);
+  }, []);
+
+  useEffect(() => {
+    const clearHashFragment = () => {
+      const { pathname, search } = window.location;
+      window.history.replaceState(null, '', `${pathname}${search}`);
+    };
+
+    const handleHash = () => {
+      const fragment = parseHashFragment(window.location.hash);
+      if (fragment.kind !== 'payload') return;
+      if (fragment.payload === loadAttemptsRef.current.lastHashPayload) {
+        clearHashFragment();
+        return;
+      }
+
+      const attemptId = beginLoadAttempt();
+      const result = hydrateResumeFromHashPayload(fragment.payload);
+      clearHashFragment();
+      if (!commitIfCurrent(attemptId)) return;
+
+      loadAttemptsRef.current.lastHashPayload = fragment.payload;
+      if (!result.ok) {
+        setHashStatus('error');
+        setHashMessage(result.message);
+        return;
+      }
+
+      importResume(result.resume);
+      setHashStatus('idle');
+      setHashMessage('');
+      markExternalLoad();
+    };
+
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, [beginLoadAttempt, commitIfCurrent, importResume, markExternalLoad]);
 
   const runWithJsonErrorGuard = useCallback(
     (action: () => void) => {
@@ -139,17 +188,19 @@ export default function HomePage() {
       try {
         const importedResume = await importResumeFromJson(file);
         importResume(importedResume);
+        markExternalLoad();
       } catch (err) {
         console.error('Import failed:', err);
         alert('Failed to import resume. Please check the file format.');
       }
     },
-    [importResume]
+    [importResume, markExternalLoad]
   );
 
   const handleClearAll = useCallback(() => {
     resetResume();
-  }, [resetResume]);
+    markExternalLoad();
+  }, [resetResume, markExternalLoad]);
 
   const handleUpdateSection = useCallback(
     (sectionId: string, data: Partial<Section>) => {
@@ -172,11 +223,21 @@ export default function HomePage() {
     (loadedResume: Resume, templateId: string) => {
       setTemplate(templateId);
       importResume(loadedResume);
+      markExternalLoad();
       setActiveView('editor');
       setMobileView('editor');
       setJsonHasErrors(false);
     },
-    [setTemplate, importResume]
+    [setTemplate, importResume, markExternalLoad]
+  );
+
+  const handleApplyJson = useCallback(
+    (parsedResume: Resume) => {
+      importResume(parsedResume);
+      setEpochSource('apply');
+      setAppliedEpoch((epoch) => epoch + 1);
+    },
+    [importResume]
   );
 
   const handleDesktopPreviewModeChange = useCallback((mode: PreviewMode) => {
@@ -253,7 +314,11 @@ export default function HomePage() {
     previewMode === 'json' ? (
       <JsonEditorPanel
         resume={resume}
-        onApply={importResume}
+        appliedEpoch={appliedEpoch}
+        epochSource={epochSource}
+        onBeginAttempt={beginLoadAttempt}
+        onCommitIfCurrent={commitIfCurrent}
+        onApply={handleApplyJson}
         onErrorStateChange={setJsonHasErrors}
       />
     ) : (
@@ -293,6 +358,18 @@ export default function HomePage() {
         isPdfReady={!!pdfUrl && !isCompiling}
         isDocxExporting={isDocxExporting}
       />
+      <div
+        data-testid="hash-data-status"
+        data-state={hashStatus}
+        role={hashStatus === 'error' ? 'alert' : 'status'}
+        className={
+          hashStatus === 'error'
+            ? 'border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive'
+            : 'sr-only'
+        }
+      >
+        {hashStatus === 'error' ? hashMessage : ''}
+      </div>
       <JsonErrorLeaveDialog
         open={!!pendingJsonLeaveAction}
         onOpenChange={(open) => {

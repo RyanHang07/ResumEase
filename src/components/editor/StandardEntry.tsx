@@ -63,10 +63,10 @@ export const StandardEntry = ({
 
   const handlePrimaryChange = (value: string) => {
     if (isProject) {
-      onUpdate({ title: value });
+      onUpdate({ title: value, organization: '' });
       return;
     }
-    onUpdate({ organization: value, title: value });
+    onUpdate({ organization: value, title: '' });
   };
 
   const primaryValue = isProject

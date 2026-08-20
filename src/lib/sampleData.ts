@@ -23,7 +23,7 @@ export const createSampleResume = (): Resume => ({
       entries: [
         {
           id: 'entry-edu-001',
-          title: 'State University',
+          title: '',
           organization: 'State University',
           role: 'B.S. Computer Science',
           dates: { start: '2023-09', end: '2027-05' },
@@ -48,7 +48,7 @@ export const createSampleResume = (): Resume => ({
       entries: [
         {
           id: 'entry-exp-001',
-          title: 'Tech Company Inc.',
+          title: '',
           organization: 'Tech Company Inc.',
           role: 'Software Engineering Intern',
           location: 'San Jose, CA',
@@ -60,7 +60,7 @@ export const createSampleResume = (): Resume => ({
         },
         {
           id: 'entry-exp-002',
-          title: 'Startup Labs',
+          title: '',
           organization: 'Startup Labs',
           role: 'Software Engineering Intern',
           location: 'Remote',

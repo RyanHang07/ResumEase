@@ -29,11 +29,14 @@ export const useLatexCompile = (
   const [isExtracting, setIsExtracting] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousUrlRef = useRef<string | null>(null);
+  const compileRequestRef = useRef(0);
   const extractRequestRef = useRef(0);
 
   const compile = useCallback(async () => {
     if (!enabled) return;
 
+    const requestId = compileRequestRef.current + 1;
+    compileRequestRef.current = requestId;
     setIsCompiling(true);
     setError(null);
     setPdfRoundTrip(null);
@@ -53,6 +56,11 @@ export const useLatexCompile = (
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
 
+      if (compileRequestRef.current !== requestId) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+
       if (previousUrlRef.current) {
         URL.revokeObjectURL(previousUrlRef.current);
       }
@@ -60,29 +68,32 @@ export const useLatexCompile = (
 
       setPdfUrl(url);
 
-      const requestId = extractRequestRef.current + 1;
-      extractRequestRef.current = requestId;
+      const extractId = extractRequestRef.current + 1;
+      extractRequestRef.current = extractId;
       setIsExtracting(true);
       try {
         const snapshot = await extractPdfText(url);
-        if (extractRequestRef.current !== requestId) return;
+        if (extractRequestRef.current !== extractId) return;
         setPdfRoundTrip(analyzePdfRoundTrip(resume, snapshot));
       } catch (extractError) {
         console.error('PDF extract error:', extractError);
-        if (extractRequestRef.current === requestId) {
+        if (extractRequestRef.current === extractId) {
           setPdfRoundTrip(null);
         }
       } finally {
-        if (extractRequestRef.current === requestId) {
+        if (extractRequestRef.current === extractId) {
           setIsExtracting(false);
         }
       }
     } catch (err) {
+      if (compileRequestRef.current !== requestId) return;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
       console.error('LaTeX compilation error:', err);
     } finally {
-      setIsCompiling(false);
+      if (compileRequestRef.current === requestId) {
+        setIsCompiling(false);
+      }
     }
   }, [enabled, resume, templateId]);
 

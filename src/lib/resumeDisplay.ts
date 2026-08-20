@@ -7,6 +7,7 @@ export const headerUsesIcons = (header: Header): boolean => {
   return header.useIcons !== false;
 };
 
+/** Headline the PDF/DOCX renderer prints: project `title`, else school/employer `organization`. */
 export const getEntryPrimaryText = (
   entry: StandardEntry,
   sectionName: string

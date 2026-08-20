@@ -151,7 +151,16 @@ const migrateStandardEntry = (
   ) {
     migrated.organization = oldTitle || undefined;
     migrated.role = oldOrganization || undefined;
-    migrated.title = oldTitle;
+    migrated.title = '';
+  }
+
+  if (
+    (canonicalType === 'experience' || canonicalType === 'education') &&
+    migrated.title &&
+    migrated.organization &&
+    migrated.title === migrated.organization
+  ) {
+    migrated.title = '';
   }
 
   if (canonicalType === 'projects' && techStack.length === 0 && oldOrganization) {

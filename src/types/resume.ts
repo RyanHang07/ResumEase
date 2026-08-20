@@ -44,7 +44,9 @@ export interface OrgContext {
 export interface StandardEntry {
   id: string;
   role?: string;
+  /** School or employer. Renderer primary for education/experience. Empty on projects. */
   organization?: string;
+  /** Project name. Renderer primary for projects. Empty on education/experience. */
   title: string;
   location?: string;
   dates?: DateSpan;

@@ -19,7 +19,10 @@ export const collectResumePlainText = (resume: Resume): string => {
       continue;
     }
     for (const entry of section.entries) {
-      parts.push(entry.title, entry.role ?? '', entry.organization ?? '');
+      parts.push(
+        getEntryPrimaryText(entry, section.sectionName),
+        entry.role ?? ''
+      );
       parts.push(...(entry.techStack ?? []));
       parts.push(...entry.bulletPoints);
       parts.push(...(entry.coursework ?? []));
@@ -95,7 +98,7 @@ export const findUnresolvedOrgs = (resume: Resume): string[] => {
     if (section.type !== 'standard') continue;
     if (normalizeSectionName(section.sectionName) !== 'experience') continue;
     for (const entry of section.entries) {
-      const org = entry.organization?.trim() || entry.title.trim();
+      const org = getEntryPrimaryText(entry, section.sectionName);
       if (!org) continue;
       if (isKnownEmployer(org)) continue;
       unresolved.push(org);

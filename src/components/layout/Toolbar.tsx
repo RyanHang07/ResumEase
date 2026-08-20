@@ -91,7 +91,7 @@ export const Toolbar = ({
         {/* Export Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" aria-label="Export options">
+            <Button variant="outline" size="sm" aria-label="Export options" data-testid="export-menu">
               <Download className="h-4 w-4 sm:mr-2" aria-hidden="true" />
               <span className="hidden sm:inline">Export</span>
             </Button>
@@ -102,6 +102,7 @@ export const Toolbar = ({
               disabled={!isPdfReady}
               className="cursor-pointer flex flex-col items-start gap-1"
               aria-label="Download PDF"
+              data-testid="download-pdf"
             >
               <div className="flex items-center">
                 <FileDown className="h-4 w-4 mr-2" aria-hidden="true" />

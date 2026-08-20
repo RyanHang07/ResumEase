@@ -1,14 +1,21 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { AlertCircle, CheckCircle2, FileJson, LocateFixed, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { migrateResume } from '@/lib/migrations';
+import { formatJsonApplyError, getLineStartIndex } from '@/lib/jsonApplyError';
+import { resumeToEditorJson } from '@/lib/hashResume';
+import { APPLY_IDLE_MESSAGE, APPLY_OK_MESSAGE, type StatusState } from '@/lib/jsonLoadState';
 import type { Resume } from '@/types/resume';
 
 interface JsonEditorPanelProps {
   resume: Resume;
+  appliedEpoch: number;
+  epochSource: 'hash' | 'apply';
+  onBeginAttempt: () => number;
+  onCommitIfCurrent: (attemptId: number) => boolean;
   onApply: (resume: Resume) => void;
   onErrorStateChange?: (hasErrors: boolean) => void;
 }
@@ -18,56 +25,45 @@ const parseResumeJson = (draft: string): Resume => {
   return migrateResume(parsed);
 };
 
-const resumeToEditorJson = (resume: Resume): string =>
-  // Remigrate so deprecated header fields (expectedGraduation/gpa) are never shown
-  JSON.stringify(migrateResume(resume), null, 2);
-
-const getLineFromJsonError = (message: string, draft: string): number | null => {
-  const lineMatch = message.match(/line\s+(\d+)/i);
-  if (lineMatch?.[1]) return Number(lineMatch[1]);
-
-  const positionMatch = message.match(/position\s+(\d+)/i);
-  if (!positionMatch?.[1]) return null;
-
-  const position = Number(positionMatch[1]);
-  if (!Number.isFinite(position)) return null;
-
-  return draft.slice(0, position).split('\n').length;
-};
-
-const getLineStartIndex = (text: string, lineNumber: number): number => {
-  if (lineNumber <= 1) return 0;
-
-  const linesBeforeTarget = text.split('\n').slice(0, lineNumber - 1);
-  return linesBeforeTarget.join('\n').length + 1;
-};
-
 export const JsonEditorPanel = ({
   resume,
+  appliedEpoch,
+  epochSource,
+  onBeginAttempt,
+  onCommitIfCurrent,
   onApply,
   onErrorStateChange,
 }: JsonEditorPanelProps) => {
-  const initialJson = useMemo(() => resumeToEditorJson(resume), [resume]);
-  const [draft, setDraft] = useState(initialJson);
-  const [loadedResumeId, setLoadedResumeId] = useState(resume.id);
+  const incoming = useMemo(() => resumeToEditorJson(resume), [resume]);
+  const [draft, setDraft] = useState(incoming);
+  const [incomingSnapshot, setIncomingSnapshot] = useState(incoming);
+  const [seenEpoch, setSeenEpoch] = useState(appliedEpoch);
+  const [applyStatus, setApplyStatus] = useState<StatusState>('idle');
+  const [applyMessage, setApplyMessage] = useState(APPLY_IDLE_MESSAGE);
   const lineNumbers = useMemo(
     () => Array.from({ length: draft.split('\n').length }, (_, index) => index + 1),
     [draft]
   );
   const lineNumberRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [error, setError] = useState<string | null>(null);
   const [errorLine, setErrorLine] = useState<number | null>(null);
   const [isJumpingToError, setIsJumpingToError] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Sync draft when a different resume is loaded (prefer sync over remount for undo UX).
-  if (resume.id !== loadedResumeId) {
-    setLoadedResumeId(resume.id);
-    setDraft(resumeToEditorJson(resume));
-    setError(null);
-    setErrorLine(null);
-    setSuccessMessage(null);
+  if (appliedEpoch !== seenEpoch) {
+    setSeenEpoch(appliedEpoch);
+    setIncomingSnapshot(incoming);
+    setDraft(incoming);
+    if (epochSource === 'hash') {
+      setApplyStatus('idle');
+      setApplyMessage(APPLY_IDLE_MESSAGE);
+      setErrorLine(null);
+      setIsJumpingToError(false);
+    }
+  } else if (incoming !== incomingSnapshot) {
+    if (draft === incomingSnapshot) {
+      setDraft(incoming);
+    }
+    setIncomingSnapshot(incoming);
   }
 
   const handleJumpToErrorLine = () => {
@@ -77,7 +73,8 @@ export const JsonEditorPanel = ({
     const textarea = textareaRef.current;
     const lineHeight = Number.parseFloat(getComputedStyle(textarea).lineHeight);
     const fallbackLineHeight = 18;
-    const targetScrollTop = (errorLine - 1) * (Number.isFinite(lineHeight) ? lineHeight : fallbackLineHeight);
+    const targetScrollTop =
+      (errorLine - 1) * (Number.isFinite(lineHeight) ? lineHeight : fallbackLineHeight);
     const cursorPosition = getLineStartIndex(draft, errorLine);
 
     textarea.focus({ preventScroll: true });
@@ -100,32 +97,38 @@ export const JsonEditorPanel = ({
   };
 
   const handleApplyJson = () => {
-    setSuccessMessage(null);
+    const attemptId = onBeginAttempt();
 
     try {
       const parsedResume = parseResumeJson(draft);
+      if (!onCommitIfCurrent(attemptId)) return;
       onApply(parsedResume);
-      setDraft(JSON.stringify(parsedResume, null, 2));
-      setError(null);
+      setApplyStatus('ok');
+      setApplyMessage(APPLY_OK_MESSAGE);
       setErrorLine(null);
       setIsJumpingToError(false);
       onErrorStateChange?.(false);
-      setSuccessMessage('JSON applied successfully.');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Invalid resume JSON.';
-      setError(message);
-      setErrorLine(getLineFromJsonError(message, draft));
+      if (!onCommitIfCurrent(attemptId)) return;
+      const formatted = formatJsonApplyError(err, draft);
+      setApplyStatus('error');
+      setApplyMessage(formatted.message);
+      setErrorLine(formatted.line);
       onErrorStateChange?.(true);
     }
   };
 
   const handleResetJson = () => {
-    setDraft(initialJson);
-    setError(null);
+    setDraft(incomingSnapshot);
+    setApplyStatus('idle');
+    setApplyMessage(APPLY_IDLE_MESSAGE);
     setErrorLine(null);
     setIsJumpingToError(false);
     onErrorStateChange?.(false);
-    setSuccessMessage(null);
+  };
+
+  const handleDraftChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    setDraft(event.target.value);
   };
 
   return (
@@ -147,6 +150,7 @@ export const JsonEditorPanel = ({
             size="sm"
             onClick={handleResetJson}
             aria-label="Reset JSON editor"
+            data-testid="reset-json"
           >
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Reset
@@ -156,6 +160,7 @@ export const JsonEditorPanel = ({
             size="sm"
             onClick={handleApplyJson}
             aria-label="Apply JSON changes"
+            data-testid="apply-json"
           >
             Apply JSON
           </Button>
@@ -163,14 +168,27 @@ export const JsonEditorPanel = ({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
-        {error && (
+        <span
+          data-testid="apply-status"
+          data-state={applyStatus}
+          className={
+            applyStatus === 'error'
+              ? 'text-sm text-destructive'
+              : applyStatus === 'ok'
+                ? 'text-sm text-emerald-800 dark:text-emerald-200'
+                : 'text-sm text-muted-foreground'
+          }
+        >
+          {applyMessage}
+        </span>
+        {applyStatus === 'error' && (
           <div
             id="json-editor-error"
             className="flex flex-wrap items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
             role="alert"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="min-w-0 flex-1">{errorLine ? `Line ${errorLine}: ${error}` : error}</span>
+            <span className="min-w-0 flex-1">{applyMessage}</span>
             {errorLine && (
               <Button
                 type="button"
@@ -190,7 +208,7 @@ export const JsonEditorPanel = ({
             )}
           </div>
         )}
-        {successMessage && !error && (
+        {applyStatus === 'ok' && (
           <div
             id="json-editor-success"
             className="flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
@@ -198,7 +216,7 @@ export const JsonEditorPanel = ({
             aria-live="polite"
           >
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>{successMessage}</span>
+            <span>{APPLY_OK_MESSAGE}</span>
           </div>
         )}
         <div className="flex min-h-105 flex-1 overflow-hidden rounded-md border border-input bg-transparent focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
@@ -223,13 +241,7 @@ export const JsonEditorPanel = ({
           <Textarea
             ref={textareaRef}
             value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              setError(null);
-              setErrorLine(null);
-              onErrorStateChange?.(false);
-              setSuccessMessage(null);
-            }}
+            onChange={handleDraftChange}
             onScroll={(event) => {
               if (lineNumberRef.current) {
                 lineNumberRef.current.scrollTop = event.currentTarget.scrollTop;
@@ -238,11 +250,12 @@ export const JsonEditorPanel = ({
             spellCheck={false}
             className="min-h-105 flex-1 resize-none overflow-auto rounded-none border-0 font-mono text-xs leading-relaxed shadow-none focus-visible:ring-0 md:text-xs"
             aria-label="Resume JSON"
-            aria-invalid={!!error}
+            data-testid="resume-json"
+            aria-invalid={applyStatus === 'error'}
             aria-describedby={
-              error
+              applyStatus === 'error'
                 ? 'json-editor-error'
-                : successMessage
+                : applyStatus === 'ok'
                   ? 'json-editor-success'
                   : undefined
             }
