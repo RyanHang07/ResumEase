@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Save } from 'lucide-react';
 import type { Resume } from '@/types/resume';
 import { analyzeJdGap } from '@/lib/jobTarget';
+import { FitCheck } from '@/components/layout/FitCheck';
 import { MAX_SAVED_RESUMES } from '@/lib/savedResumes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -124,6 +125,8 @@ export const JobTargetPanel = ({
           />
         </div>
       </div>
+
+      {jobTarget.jdText.trim() && <FitCheck resume={resume} jdText={jobTarget.jdText} />}
 
       {jobTarget.jdText.trim() && (
         <div className="mt-3 space-y-2 text-xs">

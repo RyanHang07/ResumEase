@@ -5,6 +5,7 @@ import { useAuth } from '@clerk/nextjs';
 import { Check, ClipboardPaste, Copy, FileUp, Link2, Pin } from 'lucide-react';
 import type { Resume, SavedResume } from '@/types/resume';
 import { checkTailorGuard, type TailorGuardResult } from '@/lib/tailorGuard';
+import { analyzeFit } from '@/lib/fitCheck';
 import { cn } from '@/lib/utils';
 import {
   buildClaudeInstructions,
@@ -63,11 +64,13 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
     // Warn only: the guard never blocks the load or the download
     setGuard(base ? checkTailorGuard(base.data, result.resume) : null);
     setDraft('');
+    const jd = result.resume.jobTarget?.jdText?.trim();
+    const tier = jd ? analyzeFit(result.resume, jd).tier : null;
     setStatus({
       kind: 'ok',
       message: `Loaded ${resumeBaseName(result.resume)} from ${source}.${
         downloadAfterLoad ? ' The PDF downloads once it compiles.' : ''
-      }`,
+      }${tier ? ` Fit tier ${tier} (details in Parse > Target job).` : ''}`,
     });
   };
 
