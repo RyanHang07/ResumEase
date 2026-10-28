@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
-import { Check, ClipboardPaste, Copy, FileUp, Link2 } from 'lucide-react';
-import type { Resume } from '@/types/resume';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { Check, ClipboardPaste, Copy, FileUp, Link2, Pin } from 'lucide-react';
+import type { Resume, SavedResume } from '@/types/resume';
+import { checkTailorGuard, type TailorGuardResult } from '@/lib/tailorGuard';
 import { cn } from '@/lib/utils';
 import {
   buildClaudeInstructions,
@@ -22,7 +24,7 @@ interface ClaudeImportPanelProps {
 }
 
 type Status = { kind: 'idle' } | { kind: 'ok'; message: string } | { kind: 'error'; message: string };
-type CopyTarget = 'json' | 'link' | 'instructions';
+type CopyTarget = 'json' | 'base' | 'link' | 'instructions';
 
 export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelProps) => {
   const [draft, setDraft] = useState('');
@@ -30,6 +32,23 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [isDragging, setIsDragging] = useState(false);
   const [copied, setCopied] = useState<CopyTarget | null>(null);
+  const [base, setBase] = useState<SavedResume | null>(null);
+  const [guard, setGuard] = useState<TailorGuardResult | null>(null);
+  const { isSignedIn } = useAuth();
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    let cancelled = false;
+    fetch('/api/resumes?base=1')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (!cancelled) setBase(payload?.resume ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignedIn]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const instructions = useMemo(() => buildClaudeInstructions(), []);
@@ -41,6 +60,8 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
       return;
     }
     onLoadResume(result.resume, downloadAfterLoad);
+    // Warn only: the guard never blocks the load or the download
+    setGuard(base ? checkTailorGuard(base.data, result.resume) : null);
     setDraft('');
     setStatus({
       kind: 'ok',
@@ -202,6 +223,18 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
         >
           {status.kind === 'idle' ? '' : status.message}
         </p>
+
+        {guard ? (
+          <TailorGuardReport guard={guard} baseName={base?.name ?? 'base'} />
+        ) : (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {isSignedIn
+              ? base
+                ? `Tailor guard checks loads against your base "${base.name}".`
+                : 'Pin a base in Saved to check tailored JSON against it.'
+              : 'Sign in and pin a base resume to turn on the tailor guard.'}
+          </p>
+        )}
       </section>
 
       <section
@@ -223,6 +256,17 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
           >
             {copyIcon('json', Copy)}
             Copy JSON
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => base && copy('base', resumeToEditorJson(base.data))}
+            disabled={!base}
+            title={base ? `Copy "${base.name}"` : 'Pin a base resume in Saved first'}
+          >
+            {copyIcon('base', Pin)}
+            Copy base
           </Button>
           <Button
             type="button"
@@ -258,6 +302,56 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
           {instructions}
         </pre>
       </section>
+    </div>
+  );
+};
+
+const TailorGuardReport = ({ guard, baseName }: { guard: TailorGuardResult; baseName: string }) => {
+  const summary = [
+    `${guard.bulletChanges.length} bullet${guard.bulletChanges.length === 1 ? '' : 's'} changed`,
+    guard.skillsAdded.length > 0 && `skills added: ${guard.skillsAdded.join(', ')}`,
+    ...guard.techStackAdded.map((item) => `${item.location} tech added: ${item.items.join(', ')}`),
+  ].filter(Boolean);
+
+  return (
+    <div
+      role={guard.ok ? 'status' : 'alert'}
+      className={cn(
+        'mt-3 rounded-md border p-2 text-xs',
+        guard.ok
+          ? 'border-emerald-600/40 bg-emerald-500/10'
+          : 'border-destructive/40 bg-destructive/10'
+      )}
+    >
+      <p className="font-medium">
+        {guard.ok
+          ? `Tailor guard: within the rules vs "${baseName}".`
+          : `Tailor guard: ${guard.issues.length} issue${guard.issues.length === 1 ? '' : 's'} vs "${baseName}".`}
+      </p>
+      {guard.issues.length > 0 && (
+        <ul className="mt-1 list-disc space-y-0.5 pl-4 text-destructive">
+          {guard.issues.map((issue) => (
+            <li key={`${issue.location}:${issue.message}`}>
+              <span className="font-medium">{issue.location}:</span> {issue.message}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-1 text-muted-foreground">{summary.join(' · ')}</p>
+      {guard.bulletChanges.length > 0 && (
+        <details className="mt-1">
+          <summary className="cursor-pointer">Show bullet changes</summary>
+          <ul className="mt-1 space-y-2">
+            {guard.bulletChanges.map((change) => (
+              <li key={change.location}>
+                <p className="font-medium">{change.location}</p>
+                <p className="text-muted-foreground line-through">{change.before}</p>
+                <p>{change.after}</p>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 };
