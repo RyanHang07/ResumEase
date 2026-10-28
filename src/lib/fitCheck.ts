@@ -60,7 +60,7 @@ const STUDENT_ONLY =
 const CLEARANCE = /\b(?:security clearance|clearance (?:is )?required|active (?:secret|top secret)|ts\/sci)\b/i;
 const INTERNSHIP = /\bintern(?:ship)?s?\b/i;
 const ONSITE = /\b(?:on-?site|in[- ]office|in[- ]person|hybrid|\d days (?:a|per) week in (?:the )?office)\b/i;
-const YEARS_REQUIRED = /(\d{1,2})\s*\+?\s*(?:(?:-|–|to)\s*\d{1,2}\s*\+?\s*)?years?(?:\s+of)?[^.\n\d]{0,60}?experience/gi;
+const YEARS_REQUIRED = /(\d{1,2})\s*\+?\s*(?:(?:-|\u2013|to)\s*\d{1,2}\s*\+?\s*)?years?(?:\s+of)?[^.\n\d]{0,60}?experience/gi;
 const GRAD_WINDOW_MONTHS =
   /graduat\w*[^.\n]{0,60}?(?:within|in) the (?:last|past) (\d{1,2}|six|twelve|eighteen|twenty-four) months/i;
 const GRAD_WINDOW_YEAR = /graduat\w*[^.\n]{0,60}?(?:within|in) the (?:last|past) year/i;

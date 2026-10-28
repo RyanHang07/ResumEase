@@ -480,7 +480,7 @@ const buildChecklist = (
         return coverage.unbacked.length / coverage.total <= 0.4;
       })(),
     },
-    // ponytail: JD is a workflow checklist item only — it must not feed the parse score
+    // ponytail: JD is a workflow checklist item only; it must not feed the parse score
     {
       id: 'job-target',
       label: 'Target job description is set',

@@ -65,7 +65,7 @@ describe('checkTailorGuard', () => {
     const category = firstSkills(tailored).categories[0];
     const dropped = category.skills.shift();
     category.skills.push('A1', 'A2', 'A3', 'A4', 'A5', 'A6');
-    entryWithBullets(tailored).bulletPoints[0] = entryWithBullets(base).bulletPoints[0].slice(0, 10) + '—';
+    entryWithBullets(tailored).bulletPoints[0] = entryWithBullets(base).bulletPoints[0].slice(0, 10) + '\u2014';
 
     const messages = checkTailorGuard(base, tailored).issues.map((issue) => issue.message);
     expect(messages).toContain(`skills removed: ${dropped}`);
@@ -75,7 +75,7 @@ describe('checkTailorGuard', () => {
 
   it('ignores name and jobTarget edits, including em dashes in the pasted posting', () => {
     const base = createSampleResume();
-    const tailored = { ...clone(base), name: 'Alex_Acme_SWE', jobTarget: { company: 'Acme', role: 'SWE', jdText: 'Fast—paced' } };
+    const tailored = { ...clone(base), name: 'Alex_Acme_SWE', jobTarget: { company: 'Acme', role: 'SWE', jdText: 'Fast\u2014paced' } };
     expect(checkTailorGuard(base, tailored).ok).toBe(true);
   });
 });

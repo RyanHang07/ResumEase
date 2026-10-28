@@ -69,6 +69,6 @@ describe('buildClaudeInstructions', () => {
     const text = buildClaudeInstructions();
     expect(text).toContain('name: string');
     expect(text).toContain(`${APP_URL}/?download=pdf#data=<payload>`);
-    expect(text).not.toContain('—');
+    expect(text).not.toContain('\u2014');
   });
 });
