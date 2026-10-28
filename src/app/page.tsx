@@ -21,6 +21,7 @@ import { downloadLatexSource } from '@/lib/latex-generator';
 import { downloadDocx } from '@/lib/docx-generator';
 import { Section, Resume } from '@/types/resume';
 import { cn } from '@/lib/utils';
+import { resumeBaseName } from '@/lib/resumeFilename';
 import {
   hydrateResumeFromHashPayload,
   parseHashFragment,
@@ -90,6 +91,7 @@ export default function HomePage() {
     resetResume,
     setTemplate,
     updateJobTarget,
+    updateName,
     applyParserFixes,
     applyLinkVerification,
   } = useResumeStore();
@@ -355,6 +357,9 @@ export default function HomePage() {
         onClearAll={handleClearAll}
         isPdfReady={!!pdfUrl && !isCompiling}
         isDocxExporting={isDocxExporting}
+        resumeName={resume.name ?? ''}
+        resumeNamePlaceholder={resumeBaseName({ ...resume, name: undefined })}
+        onRenameResume={updateName}
       />
       <div
         data-testid="hash-data-status"

@@ -5,6 +5,7 @@ import { Resume } from '@/types/resume';
 import { extractPdfText } from '@/lib/pdfExtract';
 import { analyzePdfRoundTrip } from '@/lib/pdfRoundTrip';
 import type { PdfRoundTripResult } from '@/lib/pdfRoundTrip';
+import { resumeFilename } from '@/lib/resumeFilename';
 
 interface UseLatexCompileReturn {
   pdfUrl: string | null;
@@ -139,11 +140,11 @@ export const useLatexCompile = (
 
     const link = document.createElement('a');
     link.href = pdfUrl;
-    link.download = `resume-${new Date().toISOString().split('T')[0]}.pdf`;
+    link.download = resumeFilename(resume, 'pdf');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [pdfUrl]);
+  }, [pdfUrl, resume]);
 
   return {
     pdfUrl,

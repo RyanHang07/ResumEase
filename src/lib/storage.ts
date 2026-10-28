@@ -1,5 +1,6 @@
 import { Resume } from '@/types/resume';
 import { migrateResume } from '@/lib/migrations';
+import { resumeFilename } from '@/lib/resumeFilename';
 
 export const exportResumeAsJson = (resume: Resume): void => {
   const dataStr = JSON.stringify(resume, null, 2);
@@ -8,7 +9,7 @@ export const exportResumeAsJson = (resume: Resume): void => {
 
   const link = document.createElement('a');
   link.href = url;
-  link.download = `resume-${new Date().toISOString().split('T')[0]}.json`;
+  link.download = resumeFilename(resume, 'json');
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
