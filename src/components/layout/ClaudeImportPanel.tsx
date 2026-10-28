@@ -13,6 +13,7 @@ import {
   parseResumeInput,
 } from '@/lib/claudeImport';
 import { resumeToEditorJson } from '@/lib/hashResume';
+import { resolveCompileTemplateId } from '@/lib/latex-generator';
 import { resumeBaseName } from '@/lib/resumeFilename';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -54,8 +55,8 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
 
   const instructions = useMemo(() => buildClaudeInstructions(), []);
 
-  const load = (text: string, source: string) => {
-    const result = parseResumeInput(text);
+  const load = async (text: string, source: string) => {
+    const result = await parseResumeInput(text);
     if (!result.ok) {
       setStatus({ kind: 'error', message: result.message });
       return;
@@ -77,7 +78,7 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
   const handlePasteFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      load(text, 'clipboard');
+      await load(text, 'clipboard');
     } catch {
       setStatus({
         kind: 'error',
@@ -91,7 +92,7 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
       setStatus({ kind: 'error', message: `${file.name} is not a .json file.` });
       return;
     }
-    load(await file.text(), file.name);
+    await load(await file.text(), file.name);
   };
 
   const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
@@ -103,7 +104,7 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
       return;
     }
     const text = event.dataTransfer.getData('text/plain');
-    if (text) load(text, 'dropped text');
+    if (text) await load(text, 'dropped text');
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,9 +113,9 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
     if (file) await loadFile(file);
   };
 
-  const copy = async (target: CopyTarget, text: string) => {
+  const copy = async (target: CopyTarget, text: string | Promise<string>) => {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(await text);
       setCopied(target);
       setTimeout(() => setCopied((current) => (current === target ? null : current)), 1500);
     } catch {
@@ -207,7 +208,7 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => load(draft, 'the text box')}
+              onClick={() => void load(draft, 'the text box')}
               disabled={!draft.trim()}
             >
               Load
@@ -264,7 +265,14 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
             type="button"
             size="sm"
             variant="outline"
-            onClick={() => base && copy('base', resumeToEditorJson(base.data))}
+            onClick={() =>
+              base &&
+              copy(
+                'base',
+                // Older saves predate resume.templateId; carry the save's template along
+                resumeToEditorJson({ ...base.data, templateId: base.data.templateId ?? resolveCompileTemplateId(base.templateId) })
+              )
+            }
             disabled={!base}
             title={base ? `Copy "${base.name}"` : 'Pin a base resume in Saved first'}
           >
@@ -312,6 +320,7 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
 const TailorGuardReport = ({ guard, baseName }: { guard: TailorGuardResult; baseName: string }) => {
   const summary = [
     `${guard.bulletChanges.length} bullet${guard.bulletChanges.length === 1 ? '' : 's'} changed`,
+    guard.reorderedEntries.length > 0 && `reordered only: ${guard.reorderedEntries.join(', ')}`,
     guard.skillsAdded.length > 0 && `skills added: ${guard.skillsAdded.join(', ')}`,
     ...guard.techStackAdded.map((item) => `${item.location} tech added: ${item.items.join(', ')}`),
   ].filter(Boolean);

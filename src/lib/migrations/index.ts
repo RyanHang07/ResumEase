@@ -1,7 +1,9 @@
 import {
   CURRENT_SCHEMA_VERSION,
   RESUME_NAME_MAX_LENGTH,
+  RESUME_TEMPLATE_IDS,
   type Header,
+  type ResumeTemplateId,
   type IconMode,
   type Resume,
   type Section,
@@ -35,6 +37,14 @@ const migrateIconMode = (header: Record<string, unknown>): IconMode => {
   }
   if (header.useIcons === false) return 'none';
   return 'icon-and-text';
+};
+
+// ponytail: unknown template ids are dropped (caller falls back) instead of failing the import
+const migrateTemplateId = (value: unknown): ResumeTemplateId | undefined => {
+  const id = asString(value).trim().toLowerCase();
+  return (RESUME_TEMPLATE_IDS as readonly string[]).includes(id)
+    ? (id as ResumeTemplateId)
+    : undefined;
 };
 
 const migrateGpa = (value: unknown): number | undefined => {
@@ -265,6 +275,7 @@ export const migrateResume = (value: unknown): Resume => {
     id: asString(value.id, createId('resume')),
     // ponytail: truncate instead of throwing so an overlong name never blocks an import
     name: asString(value.name).trim().slice(0, RESUME_NAME_MAX_LENGTH) || undefined,
+    templateId: migrateTemplateId(value.templateId),
     header: migrateHeader(value.header),
     sections: value.sections.map((section, index) =>
       migrateSection(section, index, alreadyV2)

@@ -31,7 +31,7 @@ import { Section, Resume } from '@/types/resume';
 import { cn } from '@/lib/utils';
 import { resumeBaseName } from '@/lib/resumeFilename';
 import {
-  hydrateResumeFromHashPayload,
+  hydrateResumeFromFragment,
   parseHashFragment,
 } from '@/lib/hashResume';
 import { hasDownloadPdfFlag, stripDownloadFlag } from '@/lib/claudeImport';
@@ -141,7 +141,7 @@ export default function HomePage() {
       window.history.replaceState(null, '', `${pathname}${stripDownloadFlag(search)}`);
     };
 
-    const handleHash = () => {
+    const handleHash = async () => {
       const fragment = parseHashFragment(window.location.hash);
       const wantsDownload = hasDownloadPdfFlag(window.location.search);
       if (fragment.kind !== 'payload') {
@@ -155,8 +155,8 @@ export default function HomePage() {
       }
 
       const attemptId = beginLoadAttempt();
-      const result = hydrateResumeFromHashPayload(fragment.payload);
       clearHashFragment();
+      const result = await hydrateResumeFromFragment(fragment);
       if (!commitIfCurrent(attemptId)) return;
 
       loadAttemptsRef.current.lastHashPayload = fragment.payload;
@@ -173,9 +173,10 @@ export default function HomePage() {
       markExternalLoad();
     };
 
-    handleHash();
-    window.addEventListener('hashchange', handleHash);
-    return () => window.removeEventListener('hashchange', handleHash);
+    const onHashChange = () => void handleHash();
+    onHashChange();
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
   }, [beginLoadAttempt, commitIfCurrent, importResume, markExternalLoad]);
 
   useEffect(() => {
@@ -265,23 +266,24 @@ export default function HomePage() {
 
   const handleLoadSavedResume = useCallback(
     (loadedResume: Resume, templateId: string) => {
-      setTemplate(templateId);
-      importResume(loadedResume);
+      // The JSON's own templateId wins; older saves fall back to the save's template
+      importResume(loadedResume, templateId);
       markExternalLoad();
       setActiveView('editor');
       setMobileView('editor');
       setJsonHasErrors(false);
     },
-    [setTemplate, importResume, markExternalLoad]
+    [importResume, markExternalLoad]
   );
 
   const handleApplyJson = useCallback(
     (parsedResume: Resume) => {
-      importResume(parsedResume);
+      // Deleting templateId in the editor keeps the current template rather than resetting it
+      importResume(parsedResume, currentTemplate);
       setEpochSource('apply');
       setAppliedEpoch((epoch) => epoch + 1);
     },
-    [importResume]
+    [importResume, currentTemplate]
   );
 
   const handleDesktopPreviewModeChange = useCallback((mode: PreviewMode) => {

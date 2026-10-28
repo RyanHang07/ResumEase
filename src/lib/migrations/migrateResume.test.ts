@@ -193,4 +193,11 @@ describe('sample resume v2', () => {
     expect(latex).toContain('GPA 3.8');
     expect(latex).not.toContain('ossAttestation');
   });
+
+  it('keeps a known templateId and drops unknown ones without failing', () => {
+    expect(migrateResume({ ...v1Resume, templateId: 'compact' }).templateId).toBe('compact');
+    expect(migrateResume({ ...v1Resume, templateId: ' Compact ' }).templateId).toBe('compact');
+    expect(migrateResume({ ...v1Resume, templateId: 'two-column' }).templateId).toBeUndefined();
+    expect(migrateResume({ ...v1Resume, templateId: 7 }).templateId).toBeUndefined();
+  });
 });

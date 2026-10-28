@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   CURRENT_SCHEMA_VERSION,
   RESUME_NAME_MAX_LENGTH,
+  RESUME_TEMPLATE_IDS,
   type Resume,
 } from '@/types/resume';
 
@@ -87,6 +88,7 @@ export const resumeSchema = z.object({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
   id: z.string().min(1),
   name: z.string().max(RESUME_NAME_MAX_LENGTH).optional(),
+  templateId: z.enum(RESUME_TEMPLATE_IDS).optional(),
   header: headerSchema,
   sections: z.array(z.union([standardSectionSchema, skillsSectionSchema])),
   lastModified: z.coerce.date(),

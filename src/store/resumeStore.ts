@@ -4,6 +4,7 @@ import {
   Header,
   Section,
   RESUME_NAME_MAX_LENGTH,
+  DEFAULT_TEMPLATE_ID,
   createDefaultStandardSection,
   createDefaultSkillsSection,
 } from '@/types/resume';
@@ -24,7 +25,8 @@ interface ResumeStore {
   updateName: (name: string) => void;
   applyParserFixes: () => void;
   applyLinkVerification: (results: Array<{ url: string; ok: boolean }>) => void;
-  importResume: (resume: Resume) => void;
+  /** Template comes from resume.templateId, then fallbackTemplateId, then DEFAULT_TEMPLATE_ID. */
+  importResume: (resume: Resume, fallbackTemplateId?: string) => void;
   resetResume: () => void;
   setTemplate: (templateId: string) => void;
   loadSampleData: (sampleResume: Resume) => void;
@@ -32,8 +34,8 @@ interface ResumeStore {
 
 // No localStorage persistence - privacy first
 export const useResumeStore = create<ResumeStore>()((set) => ({
-  resume: createSampleResume(),
-  currentTemplate: 'classic',
+  resume: { ...createSampleResume(), templateId: DEFAULT_TEMPLATE_ID },
+  currentTemplate: DEFAULT_TEMPLATE_ID,
 
   updateHeader: (header) =>
     set((state) => ({
@@ -142,19 +144,24 @@ export const useResumeStore = create<ResumeStore>()((set) => ({
       };
     }),
 
-  importResume: (resume) =>
-    set({
-      resume: applySafeParseFixes(migrateResume(resume)),
+  importResume: (resume, fallbackTemplateId) =>
+    set(() => {
+      const migrated = applySafeParseFixes(migrateResume(resume));
+      const templateId =
+        migrated.templateId ??
+        (fallbackTemplateId ? resolveCompileTemplateId(fallbackTemplateId) : DEFAULT_TEMPLATE_ID);
+      return { resume: { ...migrated, templateId }, currentTemplate: templateId };
     }),
 
   resetResume: () =>
-    set({
-      resume: createSampleResume(),
-    }),
+    set((state) => ({
+      resume: { ...createSampleResume(), templateId: resolveCompileTemplateId(state.currentTemplate) },
+    })),
 
   setTemplate: (templateId) =>
-    set({
-      currentTemplate: resolveCompileTemplateId(templateId),
+    set((state) => {
+      const resolved = resolveCompileTemplateId(templateId);
+      return { currentTemplate: resolved, resume: { ...state.resume, templateId: resolved } };
     }),
 
   loadSampleData: (sampleResume) =>

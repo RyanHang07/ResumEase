@@ -78,4 +78,71 @@ describe('checkTailorGuard', () => {
     const tailored = { ...clone(base), name: 'Alex_Acme_SWE', jobTarget: { company: 'Acme', role: 'SWE', jdText: 'Fast\u2014paced' } };
     expect(checkTailorGuard(base, tailored).ok).toBe(true);
   });
+
+  it('passes a pure bullet reorder and reports it as informational', () => {
+    const base = createSampleResume();
+    entryWithBullets(base).bulletPoints = ['Cut errors by 70% in Sentry.', 'Shipped search 30% faster.', 'Wrote tests.'];
+    const tailored = clone(base);
+    entryWithBullets(tailored).bulletPoints = ['Shipped search 30% faster.', 'Wrote tests.', 'Cut errors by 70% in Sentry.'];
+
+    const result = checkTailorGuard(base, tailored);
+    expect(result.issues).toEqual([]);
+    expect(result.bulletChanges).toEqual([]);
+    expect(result.reorderedEntries).toHaveLength(1);
+  });
+
+  it('passes reorder + rewrites that move a metric to another bullet without adding length', () => {
+    const base = createSampleResume();
+    const short = 'Wrote regression tests for search.';
+    const long = 'Improved MongoDB search throughput by 30% on messy datasets with indexed query paths.';
+    entryWithBullets(base).bulletPoints = [short, long];
+    const tailored = clone(base);
+    // Bullet 1 is now longer than the base's bullet 1, but no longer than the base's longest
+    entryWithBullets(tailored).bulletPoints = [
+      'Made MongoDB search 30% faster on messy production data using indexed queries.',
+      'Added search regression tests.',
+    ];
+
+    const result = checkTailorGuard(base, tailored);
+    expect(result.issues).toEqual([]);
+    expect(result.bulletChanges.map((change) => change.location)).toEqual([
+      expect.stringMatching(/bullet 1 \(was 2\)$/),
+      expect.stringMatching(/bullet 2 \(was 1\)$/),
+    ]);
+  });
+
+  it('flags a bullet longer than every base bullet it could pair with', () => {
+    const base = createSampleResume();
+    entryWithBullets(base).bulletPoints = ['Short one.', 'A slightly longer one.'];
+    const tailored = clone(base);
+    entryWithBullets(tailored).bulletPoints = ['Short one.', 'A slightly longer one, now padded out.'];
+    const messages = checkTailorGuard(base, tailored).issues.map((issue) => issue.message);
+    expect(messages.some((message) => message.startsWith('longer than the base allows'))).toBe(true);
+  });
+
+  it('flags numbers that are not in the base entry', () => {
+    const base = createSampleResume();
+    entryWithBullets(base).bulletPoints = ['Built search for the website used by many teams.'];
+    const tailored = clone(base);
+    entryWithBullets(tailored).bulletPoints = ['Built search for a site used by 40 teams.'];
+    const messages = checkTailorGuard(base, tailored).issues.map((issue) => issue.message);
+    expect(messages).toContain('number not in the base: 40');
+  });
+
+  it('passes reordered categories and skills moved between categories', () => {
+    const base = createSampleResume();
+    const skills = firstSkills(base);
+    skills.categories = [
+      { id: 'lang', categoryName: 'Languages', skills: ['Python', 'TypeScript', 'Bash'] },
+      { id: 'tools', categoryName: 'Tools', skills: ['Git', 'Docker'] },
+    ];
+    const tailored = clone(base);
+    firstSkills(tailored).categories = [
+      { id: 'tools', categoryName: 'Tools', skills: ['Docker', 'Bash', 'Git'] },
+      { id: 'lang', categoryName: 'Languages', skills: ['TypeScript', 'Python'] },
+    ];
+    const result = checkTailorGuard(base, tailored);
+    expect(result.issues).toEqual([]);
+    expect(result.skillsAdded).toEqual([]);
+  });
 });
