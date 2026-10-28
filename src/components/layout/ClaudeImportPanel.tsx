@@ -320,6 +320,7 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
 const TailorGuardReport = ({ guard, baseName }: { guard: TailorGuardResult; baseName: string }) => {
   const summary = [
     `${guard.bulletChanges.length} bullet${guard.bulletChanges.length === 1 ? '' : 's'} changed`,
+    guard.reorderedEntries.length > 0 && `reordered only: ${guard.reorderedEntries.join(', ')}`,
     guard.skillsAdded.length > 0 && `skills added: ${guard.skillsAdded.join(', ')}`,
     ...guard.techStackAdded.map((item) => `${item.location} tech added: ${item.items.join(', ')}`),
   ].filter(Boolean);

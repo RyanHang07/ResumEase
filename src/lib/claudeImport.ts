@@ -94,8 +94,10 @@ Rules:
 - Plain text only in bullets. No markdown, no LaTeX.
 - The compiled PDF must fit on one page.
 - If the user pinned a base resume, the app checks your JSON against it: header, ids, dates, titles,
-  orgs, links and order unchanged; same bullet counts; no bullet longer than the base; every metric
-  kept; skills and techStack only added (5 skills max); no em dashes.
+  orgs, links, and section/entry order unchanged; same bullet count per entry; bullets may be reordered
+  and rewritten as long as no bullet outgrows the base bullet it pairs with (lengths compared longest
+  to longest); every metric kept somewhere in the same entry and no new numbers; skills and techStack
+  only added (5 skills max), with skills free to move between or reorder within categories; no em dashes.
 
 How to hand it back (either works):
 1. A single \`\`\`json code block with the full resume. The user pastes it into the Claude tab.
