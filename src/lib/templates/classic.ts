@@ -24,11 +24,17 @@ export const generateClassicLatex = (resume: Resume): string => {
     }
 
     if (section.entries.length === 0) return '';
-    const entries = section.entries.map((entry) => {
+    const entryBlocks = section.entries.map((entry) => {
       const parts = getLatexEntryParts(entry, section.sectionName);
       const bullets = parts.bullets
         .map((b) => `    \\item {${escapeLatexInline(b)}}`)
         .join('\n');
+      // No heading text: skip the empty "\textbf{} \hfill \\" line
+      if (!parts.hasHeading) {
+        if (!bullets) return '';
+        if (parts.isSummary) return parts.bullets.map((b) => escapeLatexInline(b)).join('\n\n');
+        return `\\begin{itemize}[leftmargin=1.5em, topsep=0pt, itemsep=-2pt]\n${bullets}\n\\end{itemize}`;
+      }
       const hasEducationExtras = Boolean(
         parts.educationMetaLatex || parts.courseworkLatex
       );
@@ -58,7 +64,9 @@ export const generateClassicLatex = (resume: Resume): string => {
         ? `\\textit{${parts.secondaryLatex}} ${secondaryBreak}`
         : '';
       return `${parts.primaryLatex} \\hfill ${parts.datesLatex} \\\\\n${secondary}${educationExtrasBlock}${bulletBlock}`;
-    }).join('\n\\vspace{6pt}\n');
+    });
+    const entries = entryBlocks.filter(Boolean).join('\n\\vspace{6pt}\n');
+    if (!entries) return '';
     return `\\section*{${escapeLatex(section.sectionName)}}\n\\vspace{-0.5em}\\hrule\\vspace{6pt}\n${entries}`;
   }).filter(s => s).join('\n\n');
 

@@ -34,15 +34,20 @@ export const getLatexEntryParts = (entry: StandardEntry, sectionName: string) =>
     ? `\\href{${href}}{\\textbf{${escapedPrimary}}}`
     : `\\textbf{${escapedPrimary}}`;
   const linkedPrimary = href ? `\\href{${href}}{${escapedPrimary}}` : escapedPrimary;
-  const isEducation = normalizeSectionName(sectionName) === 'education';
+  const sectionType = normalizeSectionName(sectionName);
+  const isEducation = sectionType === 'education';
   const educationMeta = isEducation ? getEducationMetaLatex(entry) : '';
+  const courseworkLatex = coursework.map(escapeLatex).join(', ');
 
   return {
+    /** False for Summary-style entries with no org, title, role, location, dates, or extras. */
+    hasHeading: Boolean(primary || secondary || dates || courseworkLatex || educationMeta),
+    isSummary: sectionType === 'summary',
     primaryLatex,
     linkedPrimary,
     secondaryLatex: escapeLatex(secondary),
     datesLatex: escapeLatex(dates),
-    courseworkLatex: coursework.map(escapeLatex).join(', '),
+    courseworkLatex,
     educationMetaLatex: educationMeta,
     bullets,
   };

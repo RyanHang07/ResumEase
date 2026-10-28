@@ -24,7 +24,7 @@ export const generateCompactLatex = (resume: Resume): string => {
     } else {
       if (section.entries.length === 0) return '';
       const isProject = normalizeSectionName(section.sectionName) === 'projects';
-      const entries = section.entries.map((entry) => {
+      const entryBlocks = section.entries.map((entry) => {
         const parts = getLatexEntryParts(entry, section.sectionName);
         const bullets = parts.bullets
           .map((b) => `        \\resumeItem{${escapeLatexInline(b)}}`)
@@ -32,6 +32,17 @@ export const generateCompactLatex = (resume: Resume): string => {
         const bulletBlock = bullets
           ? `    \\resumeItemListStart\n${bullets}\n    \\resumeItemListEnd`
           : '';
+        // No heading text: drawing \resumeSubheading would leave two blank rows plus padding
+        if (!parts.hasHeading) {
+          if (!bullets) return '';
+          if (parts.isSummary) {
+            return parts.bullets
+              .map((b) => `    \\item\\small{${escapeLatexInline(b)}}`)
+              .join('\n');
+          }
+          // \item[] opens the outer list item that the nested bullet list needs
+          return `    \\item[]\n${bulletBlock}`;
+        }
         if (isProject) {
           const tech = parts.secondaryLatex ? ` $|$ \\emph{${parts.secondaryLatex}}` : '';
           return `    \\resumeProjectHeading\n    {${parts.primaryLatex}${tech}}{${parts.datesLatex}}\n${bulletBlock}`;
@@ -59,7 +70,9 @@ export const generateCompactLatex = (resume: Resume): string => {
           : '';
 
         return `    \\resumeSubheading\n    {${parts.linkedPrimary}}{${parts.datesLatex}}\n    {${parts.secondaryLatex}}{}\n${educationExtrasBlock}${educationBulletBlock || bulletBlock}`;
-      }).join('\n\n');
+      });
+      const entries = entryBlocks.filter(Boolean).join('\n\n');
+      if (!entries) return '';
       return `\\section{${escapeLatex(section.sectionName)}}\n\\resumeSubHeadingListStart\n${entries}\n\\resumeSubHeadingListEnd`;
     }
   }).filter(s => s).join('\n\n');
