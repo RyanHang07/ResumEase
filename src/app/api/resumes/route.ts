@@ -3,8 +3,12 @@ import { del, get, list, put } from '@vercel/blob';
 import { auth } from '@clerk/nextjs/server';
 import { Resume, SavedResume } from '@/types/resume';
 import { migrateResume } from '@/lib/migrations';
+import {
+  MAX_SAVED_RESUMES,
+  isSavedResumeExpired,
+  savedResumeId,
+} from '@/lib/savedResumes';
 
-const MAX_RESUMES = 5;
 const MAX_RESUME_PAYLOAD_LENGTH = 100_000;
 const MAX_RESUME_NAME_LENGTH = 80;
 const BLOB_ACCESS = 'private' as const;
@@ -36,6 +40,18 @@ const isResumeLike = (value: unknown): value is Resume => {
   );
 };
 
+type BlobListing = Awaited<ReturnType<typeof list>>['blobs'];
+
+// ponytail: expiry runs lazily on list/save instead of a cron; uploadedAt bumps on every overwrite
+const listLiveResumeBlobs = async (userId: string): Promise<BlobListing> => {
+  const { blobs } = await list({ prefix: `resumes/${userId}/`, limit: 1000 });
+  const expired = blobs.filter((blob) => isSavedResumeExpired(blob.uploadedAt));
+  if (expired.length > 0) {
+    await del(expired.map((blob) => blob.pathname));
+  }
+  return blobs.filter((blob) => !isSavedResumeExpired(blob.uploadedAt));
+};
+
 const readBlobJson = async <T>(pathname: string): Promise<T | null> => {
   const result = await get(pathname, { access: BLOB_ACCESS });
   if (!result || result.statusCode !== 200 || !result.stream) {
@@ -53,7 +69,7 @@ export async function GET() {
     }
 
     try {
-      const { blobs } = await list({ prefix: `resumes/${userId}/`, limit: 100 });
+      const blobs = await listLiveResumeBlobs(userId);
       const resumes = (
         await Promise.all(blobs.map((blob) => readBlobJson<SavedResume>(blob.pathname)))
       ).flatMap((resume) => {
@@ -66,6 +82,7 @@ export async function GET() {
         }
       });
 
+      resumes.sort((a, b) => b.savedAt.localeCompare(a.savedAt));
       return NextResponse.json({ resumes });
     } catch (storageError) {
       console.error('Resume storage error:', storageError);
@@ -134,12 +151,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    try {
-      const { blobs } = await list({ prefix: `resumes/${userId}/`, limit: 100 });
+    const id = savedResumeId(name);
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Resume name needs at least one letter or number' },
+        { status: 400 }
+      );
+    }
 
-      if (blobs.length >= MAX_RESUMES) {
+    try {
+      const pathname = resumePath(userId, id);
+      const blobs = await listLiveResumeBlobs(userId);
+      const isOverwrite = blobs.some((blob) => blob.pathname === pathname);
+
+      if (!isOverwrite && blobs.length >= MAX_SAVED_RESUMES) {
         return NextResponse.json(
-          { error: `Maximum of ${MAX_RESUMES} resumes allowed` },
+          { error: `Maximum of ${MAX_SAVED_RESUMES} resumes allowed` },
           { status: 400 }
         );
       }
@@ -155,20 +182,21 @@ export async function POST(request: NextRequest) {
       }
 
       const newResume: SavedResume = {
-        id: crypto.randomUUID(),
+        id,
         name: name.trim(),
         templateId,
         data: migratedData,
         savedAt: new Date().toISOString(),
       };
 
-      await put(resumePath(userId, newResume.id), JSON.stringify(newResume), {
+      await put(pathname, JSON.stringify(newResume), {
         access: BLOB_ACCESS,
         addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: 'application/json',
       });
 
-      return NextResponse.json({ resume: newResume });
+      return NextResponse.json({ resume: newResume, overwritten: isOverwrite });
     } catch (storageError) {
       console.error('Resume storage error:', storageError);
       return NextResponse.json(

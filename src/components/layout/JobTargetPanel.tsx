@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Save } from 'lucide-react';
 import type { Resume } from '@/types/resume';
 import { analyzeJdGap } from '@/lib/jobTarget';
+import { MAX_SAVED_RESUMES } from '@/lib/savedResumes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,7 +59,7 @@ export const JobTargetPanel = ({
       });
 
       if (response.status === 401) {
-        setSaveMessage('Sign in to save a tailored copy (max 5 saves).');
+        setSaveMessage('Sign in to save a tailored copy.');
         return;
       }
 
@@ -67,7 +68,7 @@ export const JobTargetPanel = ({
         setSaveMessage(
           typeof payload.error === 'string'
             ? payload.error
-            : 'Could not save tailored copy. At 5 saves, replace an old one first.'
+            : `Could not save tailored copy. At ${MAX_SAVED_RESUMES} saves, delete an old one first.`
         );
         return;
       }
@@ -87,7 +88,7 @@ export const JobTargetPanel = ({
     >
       <h3 className="text-sm font-semibold">Target job</h3>
       <p className="mt-1 text-xs text-muted-foreground">
-        Paste a JD for literal keyword gaps. Duplicate saves a cloud copy with this target (max 5).
+        Paste a JD for literal keyword gaps. Duplicate saves a cloud copy with this target.
       </p>
 
       <div className="mt-3 grid grid-cols-1 gap-3">
