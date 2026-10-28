@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Trash2, Download, Loader2 } from 'lucide-react';
+import { Save, Trash2, Download, Loader2, Pin, PinOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +37,7 @@ export const SavedResumesPanel = ({ onLoadResume }: SavedResumesPanelProps) => {
   const [saveName, setSaveName] = useState('');
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [deleteResumeId, setDeleteResumeId] = useState<string | null>(null);
+  const [baseId, setBaseId] = useState<string | null>(null);
 
   const fetchResumes = useCallback(async () => {
     try {
@@ -47,6 +48,7 @@ export const SavedResumesPanel = ({ onLoadResume }: SavedResumesPanelProps) => {
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json();
           setSavedResumes(data.resumes || []);
+          setBaseId(typeof data.baseId === 'string' ? data.baseId : null);
         } else {
           // Clerk not configured - API returned HTML (redirect page)
           console.warn('Clerk not configured. Skipping resume fetch.');
@@ -142,6 +144,20 @@ export const SavedResumesPanel = ({ onLoadResume }: SavedResumesPanelProps) => {
     [onLoadResume]
   );
 
+  const handleToggleBase = useCallback(async (resumeId: string) => {
+    const nextBaseId = baseId === resumeId ? null : resumeId;
+    const response = await fetch('/api/resumes', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baseId: nextBaseId }),
+    }).catch(() => null);
+    if (!response?.ok) {
+      alert('Could not update the base resume.');
+      return;
+    }
+    setBaseId(nextBaseId);
+  }, [baseId]);
+
   const handleDeleteResume = useCallback(
     async (resumeId: string) => {
       try {
@@ -199,7 +215,7 @@ export const SavedResumesPanel = ({ onLoadResume }: SavedResumesPanelProps) => {
 
         <p className="mb-3 text-xs text-muted-foreground">
           Saving with an existing name overwrites it. Saves untouched for{' '}
-          {SAVED_RESUME_EXPIRY_DAYS} days are removed.
+          {SAVED_RESUME_EXPIRY_DAYS} days are removed, except the pinned base.
         </p>
 
         <Dialog open={isSaveDialogOpen} onOpenChange={handleSaveDialogOpenChange}>
@@ -287,7 +303,14 @@ export const SavedResumesPanel = ({ onLoadResume }: SavedResumesPanelProps) => {
           savedResumes.map((savedResume) => (
             <Card key={savedResume.id}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">{savedResume.name}</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  {savedResume.name}
+                  {baseId === savedResume.id && (
+                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                      Base
+                    </span>
+                  )}
+                </CardTitle>
                 <p className="text-xs text-muted-foreground">
                   Saved {formatDate(savedResume.savedAt)} • Template:{' '}
                   {getTemplateName(savedResume.templateId)}
@@ -304,6 +327,27 @@ export const SavedResumesPanel = ({ onLoadResume }: SavedResumesPanelProps) => {
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Load
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleToggleBase(savedResume.id)}
+                    aria-label={
+                      baseId === savedResume.id
+                        ? `Unpin ${savedResume.name} as base`
+                        : `Set ${savedResume.name} as base`
+                    }
+                    title={
+                      baseId === savedResume.id
+                        ? 'Unpin base'
+                        : 'Set as base: never expires, used by the Claude tab and tailor guard'
+                    }
+                  >
+                    {baseId === savedResume.id ? (
+                      <PinOff className="h-4 w-4" />
+                    ) : (
+                      <Pin className="h-4 w-4" />
+                    )}
                   </Button>
                   <Dialog
                     open={deleteResumeId === savedResume.id}

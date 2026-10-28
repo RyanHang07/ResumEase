@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { createSampleResume } from '@/lib/sampleData';
-import { MAX_SAVED_RESUMES } from '@/lib/savedResumes';
+import { MAX_SAVED_RESUMES, SAVED_RESUME_EXPIRY_START } from '@/lib/savedResumes';
 
 type FakeBlob = { pathname: string; url: string; uploadedAt: Date; body: string };
 
@@ -33,7 +33,17 @@ vi.mock('@vercel/blob', () => ({
   },
 }));
 
-const { GET, POST } = await import('@/app/api/resumes/route');
+const { DELETE, GET, PATCH, POST } = await import('@/app/api/resumes/route');
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const get = (query = '') => GET(new NextRequest(`http://localhost/api/resumes${query}`));
+const pin = (baseId: string | null) =>
+  PATCH(
+    new NextRequest('http://localhost/api/resumes', {
+      method: 'PATCH',
+      body: JSON.stringify({ baseId }),
+    })
+  );
 
 const save = (name: string) =>
   POST(
@@ -62,6 +72,10 @@ const seed = (id: string, uploadedAt = new Date()) => {
 beforeEach(() => {
   store.clear();
   userId = 'user_1';
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('POST /api/resumes', () => {
@@ -99,13 +113,57 @@ describe('POST /api/resumes', () => {
 });
 
 describe('GET /api/resumes', () => {
-  it('deletes saves older than the expiry window', async () => {
-    seed('fresh');
-    seed('stale', new Date(Date.now() - 91 * 24 * 60 * 60 * 1000));
+  it('deletes saves untouched for 90 days, counting old saves from the clock start', async () => {
+    const start = new Date(SAVED_RESUME_EXPIRY_START).getTime();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(start + 100 * DAY_MS));
+    seed('fresh', new Date(start + 50 * DAY_MS));
+    seed('stale', new Date(start + 5 * DAY_MS));
+    seed('pre-existing', new Date('2025-01-01T00:00:00Z'));
 
-    const payload = await (await GET()).json();
+    const payload = await (await get()).json();
 
     expect(payload.resumes.map((resume: { id: string }) => resume.id)).toEqual(['fresh']);
     expect(store.has('resumes/user_1/stale.json')).toBe(false);
+  });
+
+  it('keeps pre-existing saves before the clock runs out', async () => {
+    seed('pre-existing', new Date('2025-01-01T00:00:00Z'));
+    const payload = await (await get()).json();
+    expect(payload.resumes).toHaveLength(1);
+  });
+});
+
+describe('base resume pin', () => {
+  it('pins, returns, and exempts the base from expiry', async () => {
+    const start = new Date(SAVED_RESUME_EXPIRY_START).getTime();
+    seed('base-resume', new Date(start));
+    seed('other', new Date(start));
+
+    expect((await pin('base-resume')).status).toBe(200);
+    expect((await (await get()).json()).baseId).toBe('base-resume');
+    expect((await (await get('?base=1')).json()).resume.id).toBe('base-resume');
+
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(start + 200 * DAY_MS));
+    const payload = await (await get()).json();
+    expect(payload.resumes.map((resume: { id: string }) => resume.id)).toEqual(['base-resume']);
+  });
+
+  it('rejects unknown or unsafe ids and clears with null', async () => {
+    seed('a');
+    expect((await pin('missing')).status).toBe(404);
+    expect((await pin('../x')).status).toBe(400);
+    await pin('a');
+    await pin(null);
+    expect((await (await get()).json()).baseId).toBeNull();
+    expect((await (await get('?base=1')).json()).resume).toBeNull();
+  });
+
+  it('clears the pin when the base save is deleted', async () => {
+    seed('a');
+    await pin('a');
+    await DELETE(new NextRequest('http://localhost/api/resumes?id=a', { method: 'DELETE' }));
+    expect(store.has('resume-meta/user_1/base.json')).toBe(false);
   });
 });
