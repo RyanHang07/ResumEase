@@ -131,6 +131,13 @@ const TEMPLATE_PROFILES: Record<string, AtsTemplateProfile> = {
     scorePenalty: 0,
     summary: 'Traditional one-column CV layout with standard sections.',
   },
+  dense: {
+    templateId: 'dense',
+    label: 'Dense',
+    risk: 'low',
+    scorePenalty: 0,
+    summary: 'Single-column Times layout with plain-text headings and Unicode extraction.',
+  },
 };
 
 const AUTOFILL_HINTS: Record<CanonicalSectionType | 'custom', string> = {
@@ -595,7 +602,7 @@ export const analyzeResumeForAts = (
         `template-risk-${templateId}`,
         'warning',
         'Switch to a supported template',
-        'This resume still points at a removed template. Classic, Compact, or Academic are supported.',
+        'This resume still points at a removed template. Classic, Compact, Academic, or Dense are supported.',
         'template',
         'classic-template'
       )

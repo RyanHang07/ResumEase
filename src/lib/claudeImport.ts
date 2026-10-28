@@ -78,7 +78,7 @@ Shape:
 - id: string (do not change)
 - name: string, max ${RESUME_NAME_MAX_LENGTH} chars. Drives the PDF file name and the cloud save name.
   Format: First-Last_Company_Role, letters, digits, dashes, underscores. Example: Ryan-Hang_Acme_Software-Engineer
-- templateId: "classic" | "compact" | "academic". The PDF layout. Keep the base's value; missing means "compact".
+- templateId: "classic" | "compact" | "academic" | "dense". The PDF layout. Keep the base's value; missing means "compact".
 - header: { name, email, phone, location, linkedIn, github, website, blog, workAuthorization, iconMode }
 - sections[]: ordered by "order"
   - type "standard": { id, sectionName, order, entries[] }

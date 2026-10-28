@@ -34,6 +34,12 @@ export const templates: Template[] = [
     description: 'Traditional serif font for academia',
     previewColor: 'bg-gradient-to-b from-red-400 to-red-800 text-white',
   },
+  {
+    id: 'dense',
+    name: 'Dense',
+    description: 'Times serif at 10pt with tight spacing to fit more on one page',
+    previewColor: 'bg-gradient-to-b from-stone-500 to-stone-800 text-white',
+  },
 ];
 
 export const getTemplateName = (templateId: string): string => {

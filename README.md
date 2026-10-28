@@ -19,7 +19,7 @@ Parse-first resume editor for software internship applications. Edit structured 
 - Fit check: a pasted JD is graded A/B/C from resume facts (student-only, grad window, years, clearance, languages, onsite location), kept out of the parse score
 - Tailoring skill for Claude: [`docs/resume-tailor/SKILL.md`](docs/resume-tailor/SKILL.md)
 - ATS parser lenses (Workday, Taleo, Lever, iCIMS, SuccessFactors, Greenhouse)
-- Templates: Classic, Compact, Academic
+- Templates: Classic, Compact, Academic, Dense
 
 ## Run locally
 

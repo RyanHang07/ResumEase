@@ -1,6 +1,6 @@
 export const CURRENT_SCHEMA_VERSION = 2 as const;
 export const RESUME_NAME_MAX_LENGTH = 80;
-export const RESUME_TEMPLATE_IDS = ['classic', 'compact', 'academic'] as const;
+export const RESUME_TEMPLATE_IDS = ['classic', 'compact', 'academic', 'dense'] as const;
 export type ResumeTemplateId = (typeof RESUME_TEMPLATE_IDS)[number];
 /** Used when a resume JSON or link carries no templateId. */
 export const DEFAULT_TEMPLATE_ID: ResumeTemplateId = 'compact';

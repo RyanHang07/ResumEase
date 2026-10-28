@@ -4,6 +4,7 @@ import {
   generateClassicLatex,
   generateCompactLatex,
   generateAcademicLatex,
+  generateDenseLatex,
 } from './templates';
 
 export const COMPILE_TEMPLATE_IDS = RESUME_TEMPLATE_IDS;
@@ -23,6 +24,8 @@ export const generateLatex = (resume: Resume, templateId: string = 'classic'): s
       return generateCompactLatex(resume);
     case 'academic':
       return generateAcademicLatex(resume);
+    case 'dense':
+      return generateDenseLatex(resume);
     case 'classic':
     default:
       return generateClassicLatex(resume);

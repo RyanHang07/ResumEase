@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 2,
+  "id": "resume-franklin-hong",
+  "name": "Franklin-Hong_Data-Analyst",
+  "templateId": "compact",
+  "lastModified": "2026-10-28",
+  "header": {
+    "name": "Franklin Hoang Hong",
+    "phone": "714-417-2468",
+    "email": "franklinhong03@gmail.com",
+    "location": "",
+    "iconMode": "icon-and-text",
+    "linkedIn": "linkedin.com/in/franklin-hong/"
+  },
+  "sections": [
+    {
+      "type": "standard",
+      "sectionName": "Summary",
+      "order": 1,
+      "id": "summary",
+      "entries": [
+        {
+          "id": "sum-1",
+          "title": "",
+          "organization": "",
+          "role": "",
+          "location": "",
+          "techStack": [],
+          "links": [],
+          "bulletPoints": [
+            "Double major graduate with a foundation in data analysis and forecasting. Strong experience in data manipulation, statistical modeling, and generating financial reports through competitions and analytical projects to identify trends and create actionable results."
+          ]
+        }
+      ]
+    },
+    {
+      "type": "standard",
+      "sectionName": "Work Experience",
+      "order": 2,
+      "id": "experience",
+      "entries": [
+        {
+          "id": "exp-bazz",
+          "title": "",
+          "organization": "Bazz Houston International (Temporary)",
+          "role": "Executive Operations Coordinator",
+          "location": "Garden Grove, CA",
+          "dates": {
+            "start": "2026-06",
+            "end": "2026-08"
+          },
+          "techStack": [],
+          "links": [],
+          "bulletPoints": [
+            "Built and maintained Excel spreadsheets to collect, organize, and validate financial data on 1,000+ assets for auction.",
+            "Researched comparable listings, model specifications, and asset age to inform asset pricing strategy."
+          ]
+        },
+        {
+          "id": "exp-techhub",
+          "title": "",
+          "organization": "UC Davis Tech Hub",
+          "role": "Tech Assistant",
+          "location": "Davis, CA",
+          "dates": {
+            "start": "2023-09",
+            "end": "2025-09"
+          },
+          "techStack": [],
+          "links": [],
+          "bulletPoints": [
+            "Monitored funds exceeding $100,000 across over 100 departments, keeping financial reporting accurate with CRM systems and Excel (SUMIF, XLOOKUP, Pivot Tables).",
+            "Analyzed monthly sales trends in Excel and recommended warranty messaging to the marketing team, contributing to an AppleCare+ attachment rate increase from 30% to 45%.",
+            "Advised clients on technology purchases and integration, matching recommendations to budget and utility requirements.",
+            "Built finance and budget reports with Excel tables and graphs tracking inventory and online transactions, designing dashboards for readability."
+          ]
+        }
+      ]
+    },
+    {
+      "type": "standard",
+      "sectionName": "Projects",
+      "order": 3,
+      "id": "projects",
+      "entries": [
+        {
+          "id": "proj-excel-dashboard",
+          "title": "Microsoft Excel Job Application Dashboard",
+          "organization": "",
+          "role": "",
+          "location": "",
+          "dates": {
+            "start": "2026-04",
+            "end": "2026-04"
+          },
+          "techStack": [
+            "Excel",
+            "VBA"
+          ],
+          "links": [],
+          "bulletPoints": [
+            "Designed a macro-enabled Excel dashboard that tracks the application pipeline and KPIs (Response Rate, Platform Performance, Application Timeline) using charts, tables, COUNTIFS, FILTER, and LET.",
+            "Automated status updates with VBA macros and conditional formatting to streamline the workflow."
+          ]
+        },
+        {
+          "id": "proj-obesity",
+          "title": "Physical and Dietary Indicators of Obesity (Clinical Research Project)",
+          "organization": "",
+          "role": "",
+          "location": "",
+          "dates": {
+            "start": "2024-12",
+            "end": "2024-12"
+          },
+          "techStack": [],
+          "links": [],
+          "bulletPoints": [
+            "Defined study objectives and tested hypotheses on health data with statistical models to investigate how physical activity, behavioral choices, and lifestyle factors relate to obesity.",
+            "Ran exploratory data analysis and hypothesis tests, then built Logistic Regression and Random Forest models with strong predictive performance (AUC = 0.926).",
+            "Identified significant predictors of obesity and translated results into evidence-based recommendations for dietary interventions and health policy."
+          ]
+        }
+      ]
+    },
+    {
+      "type": "skills",
+      "sectionName": "Skills",
+      "order": 4,
+      "id": "skills",
+      "categories": [
+        {
+          "id": "cat-analysis",
+          "categoryName": "Analysis/Reporting",
+          "skills": [
+            "Excel (Pivot Tables, Data Validation, Functions)",
+            "PowerPoint",
+            "Power BI",
+            "Tableau",
+            "Google Suite",
+            "KPIs"
+          ]
+        },
+        {
+          "id": "cat-programming",
+          "categoryName": "Programming",
+          "skills": [
+            "SQL",
+            "Python",
+            "R",
+            "Stata",
+            "VBA"
+          ]
+        },
+        {
+          "id": "cat-methods",
+          "categoryName": "Data Methods",
+          "skills": [
+            "Data Cleaning",
+            "Exploratory Data Analysis (EDA)",
+            "Statistical Modeling",
+            "Regression Analysis",
+            "Forecasting"
+          ]
+        },
+        {
+          "id": "cat-core",
+          "categoryName": "Core Competencies",
+          "skills": [
+            "Analytical Thinking",
+            "Problem Solving",
+            "Attention to Detail",
+            "Strong Communication",
+            "Team Player"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "standard",
+      "sectionName": "Education",
+      "order": 5,
+      "id": "education",
+      "entries": [
+        {
+          "id": "edu-ucd",
+          "title": "",
+          "organization": "University of California, Davis",
+          "role": "B.S. in Statistics, B.A. in Economics",
+          "location": "Davis, CA",
+          "dates": {
+            "start": "2025-09",
+            "end": "2025-09"
+          },
+          "coursework": [
+            "Corporate Finance",
+            "Econometrics",
+            "Financial Forecasting",
+            "Time Series Analysis",
+            "Multivariate Data Analysis"
+          ],
+          "techStack": [],
+          "links": [],
+          "bulletPoints": []
+        }
+      ]
+    },
+    {
+      "type": "standard",
+      "sectionName": "Involvement",
+      "order": 6,
+      "id": "involvement",
+      "entries": [
+        {
+          "id": "inv-ebsa-cases",
+          "title": "",
+          "organization": "Economic and Business Student Association (EBSA)",
+          "role": "Case Competitions (EBSA)",
+          "location": "Davis, CA",
+          "dates": {
+            "start": "2023-04",
+            "end": "2024-04"
+          },
+          "techStack": [],
+          "links": [],
+          "bulletPoints": [
+            "Competed in 3 competitions and finished as a finalist, working in teams of 6-7 to present business proposals to industry panels.",
+            "Proposed minimum viable product AI-powered, dynamic page generation and user hub for Notion to boost new user retention, projecting 40% increase in daily active users within one year and 20% more market capture in productivity software space.",
+            "Conducted market research and financial analysis to develop 3 investment strategies for River City Banking to achieve $6 billion in loan balance via CRE and clean energy projects by FYE 2028, evaluating and presenting ROIs and KPIs to executives."
+          ]
+        },
+        {
+          "id": "inv-ebsa-board",
+          "title": "",
+          "organization": "Economic and Business Student Association (EBSA)",
+          "role": "Committee Board Member",
+          "location": "Davis, CA",
+          "dates": {
+            "start": "2023-04",
+            "end": "2023-06"
+          },
+          "techStack": [],
+          "links": [],
+          "bulletPoints": [
+            "Organized logistics for EBSA's banquet-style formal event, resulting in over 150 attendees.",
+            "Maintained and logged weekly documentation of internal discussion, negotiated contracts with local vendors for catering, and tracked spending with Google Sheets to optimize financial spending and budget utilization."
+          ]
+        }
+      ]
+    }
+  ]
+}
