@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   encodeResumeHash,
+  encodeResumeHashCompressed,
+  hydrateResumeFromFragment,
+  hydrateResumeFromZipPayload,
   hydrateResumeFromHashPayload,
   parseHashFragment,
   resumeToEditorJson,
@@ -100,5 +103,28 @@ describe('hashResume', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.message).toBe(formatted.message);
+  });
+});
+
+describe('#z= compressed fragments', () => {
+  it('round-trips and is detected by parseHashFragment', async () => {
+    const fragment = await encodeResumeHashCompressed(sampleJson());
+    const parsed = parseHashFragment(fragment);
+    expect(parsed).toMatchObject({ kind: 'payload', encoding: 'deflate' });
+    if (parsed.kind !== 'payload') return;
+    const result = await hydrateResumeFromFragment(parsed);
+    expect(result.ok && result.resume.header.name).toBe('Alex Johnson');
+  });
+
+  it('rejects payloads that inflate past the size cap', async () => {
+    const bomb = await encodeResumeHashCompressed(' '.repeat(2_000_000));
+    expect(bomb.length).toBeLessThan(10_000);
+    const result = await hydrateResumeFromZipPayload(bomb.slice('#z='.length));
+    expect(result.ok).toBe(false);
+  });
+
+  it('keeps #data= working', () => {
+    expect(parseHashFragment('#data=abc')).toMatchObject({ kind: 'payload', encoding: 'base64' });
+    expect(parseHashFragment('#z=')).toEqual({ kind: 'empty' });
   });
 });

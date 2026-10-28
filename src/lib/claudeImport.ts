@@ -2,8 +2,11 @@ import { migrateResume } from '@/lib/migrations';
 import { formatJsonApplyError } from '@/lib/jsonApplyError';
 import {
   HASH_DATA_PREFIX,
+  HASH_ZIP_PREFIX,
   encodeResumeHash,
-  hydrateResumeFromHashPayload,
+  encodeResumeHashCompressed,
+  hydrateResumeFromFragment,
+  parseHashFragment,
   resumeToEditorJson,
   type HashHydrateResult,
 } from '@/lib/hashResume';
@@ -24,20 +27,21 @@ export const stripDownloadFlag = (search: string): string => {
 };
 
 const FENCED_BLOCK = /```(?:json)?\s*([\s\S]*?)```/i;
+const LINK_FRAGMENT = new RegExp(`(?:${HASH_DATA_PREFIX}|${HASH_ZIP_PREFIX})\\S*`);
 
 /**
  * Accepts whatever Claude hands back: raw JSON, JSON inside a ``` fence,
- * a full app link, or a bare `#data=` fragment.
+ * a full app link, or a bare `#data=` / `#z=` fragment.
  */
-export const parseResumeInput = (input: string): HashHydrateResult => {
+export const parseResumeInput = async (input: string): Promise<HashHydrateResult> => {
   const text = input.trim();
   if (!text) return { ok: false, message: 'Nothing to load. Paste resume JSON or a link.' };
 
-  const hashIndex = text.indexOf(HASH_DATA_PREFIX);
-  if (hashIndex !== -1) {
-    const payload = text.slice(hashIndex + HASH_DATA_PREFIX.length).split(/\s/)[0] ?? '';
-    if (!payload) return { ok: false, message: 'The link has an empty #data= payload.' };
-    return hydrateResumeFromHashPayload(payload);
+  const fragmentText = text.match(LINK_FRAGMENT)?.[0];
+  if (fragmentText) {
+    const fragment = parseHashFragment(fragmentText);
+    if (fragment.kind !== 'payload') return { ok: false, message: 'The link has an empty payload.' };
+    return hydrateResumeFromFragment(fragment);
   }
 
   const json = text.match(FENCED_BLOCK)?.[1]?.trim() ?? text;
@@ -49,13 +53,19 @@ export const parseResumeInput = (input: string): HashHydrateResult => {
   }
 };
 
-export const buildResumeLink = (
+/** Builds a one-click link. Compressed `#z=` by default; `#data=` stays readable for debugging. */
+export const buildResumeLink = async (
   resume: Resume,
-  { origin = APP_URL, downloadPdf = false }: { origin?: string; downloadPdf?: boolean } = {}
-): string => {
+  {
+    origin = APP_URL,
+    downloadPdf = false,
+    compress = true,
+  }: { origin?: string; downloadPdf?: boolean; compress?: boolean } = {}
+): Promise<string> => {
   const minified = JSON.stringify(JSON.parse(resumeToEditorJson(resume)));
   const query = downloadPdf ? `?${DOWNLOAD_QUERY_KEY}=pdf` : '';
-  return `${origin}/${query}${encodeResumeHash(minified)}`;
+  const fragment = compress ? await encodeResumeHashCompressed(minified) : encodeResumeHash(minified);
+  return `${origin}/${query}${fragment}`;
 };
 
 export const buildClaudeInstructions = (origin: string = APP_URL): string =>
@@ -89,7 +99,13 @@ Rules:
 
 How to hand it back (either works):
 1. A single \`\`\`json code block with the full resume. The user pastes it into the Claude tab.
-2. A one-click link: minify the JSON, base64url-encode its UTF-8 bytes (no padding), then
-   ${origin}/?download=pdf#data=<payload>
+2. A one-click link (preferred, about 55% shorter): raw DEFLATE the minified UTF-8 JSON,
+   base64url-encode it (no padding), then
+   ${origin}/?download=pdf#z=<payload>
+     import base64, json, zlib
+     raw = json.dumps(resume, separators=(",", ":"), ensure_ascii=False).encode()
+     c = zlib.compressobj(9, zlib.DEFLATED, -15)
+     payload = base64.urlsafe_b64encode(c.compress(raw) + c.flush()).decode().rstrip("=")
    Opening it loads the resume, compiles, and downloads <name>.pdf. Drop "?download=pdf" to only load.
+   The older uncompressed form ${origin}/?download=pdf#data=<base64url(json)> still works.
 `;
