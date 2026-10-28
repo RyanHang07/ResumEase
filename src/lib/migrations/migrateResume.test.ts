@@ -173,6 +173,11 @@ describe('migrateResume v1 to v2', () => {
       'expectedGraduation'
     );
   });
+
+  it('drops the removed coverLetter field from older JSON', () => {
+    const migrated = migrateResume({ ...v1Resume, coverLetter: 'Dear team...' });
+    expect(migrated).not.toHaveProperty('coverLetter');
+  });
 });
 
 describe('sample resume v2', () => {

@@ -20,7 +20,6 @@ interface ResumeStore {
   removeSection: (sectionId: string) => void;
   reorderSections: (sections: Section[]) => void;
   updateJobTarget: (jobTarget: Resume['jobTarget']) => void;
-  updateCoverLetter: (coverLetter: string | undefined) => void;
   applyParserFixes: () => void;
   applyLinkVerification: (results: Array<{ url: string; ok: boolean }>) => void;
   importResume: (resume: Resume) => void;
@@ -96,15 +95,6 @@ export const useResumeStore = create<ResumeStore>()((set) => ({
       resume: {
         ...state.resume,
         jobTarget,
-        lastModified: new Date(),
-      },
-    })),
-
-  updateCoverLetter: (coverLetter) =>
-    set((state) => ({
-      resume: {
-        ...state.resume,
-        coverLetter,
         lastModified: new Date(),
       },
     })),

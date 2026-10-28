@@ -88,7 +88,6 @@ export const resumeSchema = z.object({
   header: headerSchema,
   sections: z.array(z.union([standardSectionSchema, skillsSectionSchema])),
   lastModified: z.coerce.date(),
-  coverLetter: z.string().optional(),
   jobTarget: z
     .object({
       company: z.string(),

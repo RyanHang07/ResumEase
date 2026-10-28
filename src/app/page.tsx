@@ -90,7 +90,6 @@ export default function HomePage() {
     resetResume,
     setTemplate,
     updateJobTarget,
-    updateCoverLetter,
     applyParserFixes,
     applyLinkVerification,
   } = useResumeStore();
@@ -286,7 +285,6 @@ export default function HomePage() {
           resume={resume}
           onApplyParserFixes={applyParserFixes}
           onUpdateJobTarget={updateJobTarget}
-          onUpdateCoverLetter={updateCoverLetter}
           onApplyLinkVerification={applyLinkVerification}
           pdfRoundTrip={pdfRoundTrip}
           isExtractingPdf={isExtracting}

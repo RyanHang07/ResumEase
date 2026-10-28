@@ -267,7 +267,6 @@ export const migrateResume = (value: unknown): Resume => {
       migrateSection(section, index, alreadyV2)
     ),
     lastModified: value.lastModified ? new Date(value.lastModified as string) : new Date(),
-    coverLetter: asString(value.coverLetter) || undefined,
     jobTarget: isRecord(value.jobTarget)
       ? {
           company: asString(value.jobTarget.company),

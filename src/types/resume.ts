@@ -100,7 +100,6 @@ export interface Resume {
   header: Header;
   sections: Section[];
   lastModified: Date;
-  coverLetter?: string;
   jobTarget?: JobTarget;
 }
 

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeJdGap } from '@/lib/jobTarget';
-import { buildCoverLetterMarkdown } from '@/lib/coverLetter';
 import {
   CURRENT_SCHEMA_VERSION,
   createDefaultHeader,
@@ -83,24 +82,5 @@ describe('analyzeJdGap', () => {
     const gap = analyzeJdGap(resume, 'Need REST APIs and Kubernetes experience');
     expect(gap.misses).not.toContain('rest');
     expect(gap.misses).not.toContain('kubernetes');
-  });
-});
-
-describe('buildCoverLetterMarkdown', () => {
-  it('builds from selected entries using attested bullets only', () => {
-    const resume = resumeFixture();
-    const result = buildCoverLetterMarkdown(resume, {
-      entryIds: ['e1'],
-      keywords: ['React'],
-      referrer: 'Sam',
-    });
-    expect(result.markdown).toContain('Acme');
-    expect(result.markdown).toContain('Software Engineering Intern');
-    expect(result.markdown).toContain('TinyCo');
-    expect(result.markdown).toContain('Built React dashboards used by 20 teammates');
-    expect(result.markdown).toContain('Sam');
-    expect(result.markdown).not.toContain('pull requests');
-    expect(result.wordCount).toBeLessThanOrEqual(400);
-    expect(result.warnings.some((warning) => warning.includes('invented claims'))).toBe(true);
   });
 });

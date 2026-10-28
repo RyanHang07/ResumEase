@@ -22,7 +22,6 @@ interface ParseReadinessPanelProps {
   resume: Resume;
   onApplyParserFixes: () => void;
   onUpdateJobTarget: (jobTarget: Resume['jobTarget']) => void;
-  onUpdateCoverLetter: (coverLetter: string | undefined) => void;
   onApplyLinkVerification: (results: Array<{ url: string; ok: boolean }>) => void;
   pdfRoundTrip?: PdfRoundTripResult | null;
   isExtractingPdf?: boolean;
@@ -34,7 +33,6 @@ export const ParseReadinessPanel = ({
   resume,
   onApplyParserFixes,
   onUpdateJobTarget,
-  onUpdateCoverLetter,
   onApplyLinkVerification,
   pdfRoundTrip = null,
   isExtractingPdf = false,
@@ -285,7 +283,6 @@ export const ParseReadinessPanel = ({
         resume={resume}
         templateId={selectedTemplate}
         onUpdateJobTarget={onUpdateJobTarget}
-        onUpdateCoverLetter={onUpdateCoverLetter}
       />
     </div>
   );
