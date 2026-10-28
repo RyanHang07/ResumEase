@@ -13,6 +13,7 @@ import {
   parseResumeInput,
 } from '@/lib/claudeImport';
 import { resumeToEditorJson } from '@/lib/hashResume';
+import { resolveCompileTemplateId } from '@/lib/latex-generator';
 import { resumeBaseName } from '@/lib/resumeFilename';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -264,7 +265,14 @@ export const ClaudeImportPanel = ({ resume, onLoadResume }: ClaudeImportPanelPro
             type="button"
             size="sm"
             variant="outline"
-            onClick={() => base && copy('base', resumeToEditorJson(base.data))}
+            onClick={() =>
+              base &&
+              copy(
+                'base',
+                // Older saves predate resume.templateId; carry the save's template along
+                resumeToEditorJson({ ...base.data, templateId: base.data.templateId ?? resolveCompileTemplateId(base.templateId) })
+              )
+            }
             disabled={!base}
             title={base ? `Copy "${base.name}"` : 'Pin a base resume in Saved first'}
           >

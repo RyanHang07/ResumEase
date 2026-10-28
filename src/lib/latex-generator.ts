@@ -1,4 +1,4 @@
-import { Resume } from '@/types/resume';
+import { RESUME_TEMPLATE_IDS, Resume } from '@/types/resume';
 import { resumeFilename } from '@/lib/resumeFilename';
 import {
   generateClassicLatex,
@@ -6,7 +6,7 @@ import {
   generateAcademicLatex,
 } from './templates';
 
-export const COMPILE_TEMPLATE_IDS = ['classic', 'compact', 'academic'] as const;
+export const COMPILE_TEMPLATE_IDS = RESUME_TEMPLATE_IDS;
 
 export type CompileTemplateId = (typeof COMPILE_TEMPLATE_IDS)[number];
 

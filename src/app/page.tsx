@@ -265,23 +265,24 @@ export default function HomePage() {
 
   const handleLoadSavedResume = useCallback(
     (loadedResume: Resume, templateId: string) => {
-      setTemplate(templateId);
-      importResume(loadedResume);
+      // The JSON's own templateId wins; older saves fall back to the save's template
+      importResume(loadedResume, templateId);
       markExternalLoad();
       setActiveView('editor');
       setMobileView('editor');
       setJsonHasErrors(false);
     },
-    [setTemplate, importResume, markExternalLoad]
+    [importResume, markExternalLoad]
   );
 
   const handleApplyJson = useCallback(
     (parsedResume: Resume) => {
-      importResume(parsedResume);
+      // Deleting templateId in the editor keeps the current template rather than resetting it
+      importResume(parsedResume, currentTemplate);
       setEpochSource('apply');
       setAppliedEpoch((epoch) => epoch + 1);
     },
-    [importResume]
+    [importResume, currentTemplate]
   );
 
   const handleDesktopPreviewModeChange = useCallback((mode: PreviewMode) => {

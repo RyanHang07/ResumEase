@@ -45,6 +45,14 @@ describe('parseResumeInput', () => {
     expect(result.ok && result.resume.name).toBe('Alex-Johnson_Acme_SWE');
   });
 
+  it('accepts and keeps templateId in raw JSON and links', () => {
+    const withTemplate = { ...sample(), templateId: 'compact' as const };
+    const raw = parseResumeInput(JSON.stringify(withTemplate));
+    expect(raw.ok && raw.resume.templateId).toBe('compact');
+    const viaLink = parseResumeInput(buildResumeLink(withTemplate, { downloadPdf: true }));
+    expect(viaLink.ok && viaLink.resume.templateId).toBe('compact');
+  });
+
   it('reports bad input without throwing', () => {
     expect(parseResumeInput('').ok).toBe(false);
     expect(parseResumeInput('{ not json').ok).toBe(false);
