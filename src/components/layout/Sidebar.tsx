@@ -15,12 +15,13 @@ import {
   Save,
   Heart,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export type SidebarView = 'templates' | 'parse' | 'editor' | 'saved';
+export type SidebarView = 'templates' | 'parse' | 'editor' | 'claude' | 'saved';
 
 interface SidebarProps {
   activeView: SidebarView;
@@ -176,6 +177,13 @@ export const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
           isActive={activeView === 'editor'}
           isCollapsed={isCollapsed}
           onClick={() => onViewChange('editor')}
+        />
+        <NavItem
+          icon={<Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />}
+          label="Claude"
+          isActive={activeView === 'claude'}
+          isCollapsed={isCollapsed}
+          onClick={() => onViewChange('claude')}
         />
         {isSignedIn && (
           <NavItem

@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { SignedIn } from '@clerk/nextjs';
-import { FileEdit, FileJson, FileText, LayoutTemplate, Save, ShieldCheck } from 'lucide-react';
+import {
+  FileEdit,
+  FileJson,
+  FileText,
+  LayoutTemplate,
+  Save,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react';
 import { useResumeStore } from '@/store/resumeStore';
 import { useLatexCompile } from '@/hooks/useLatexCompile';
 import { useAutoSave } from '@/hooks/useAutoSave';
@@ -26,6 +34,8 @@ import {
   hydrateResumeFromHashPayload,
   parseHashFragment,
 } from '@/lib/hashResume';
+import { hasDownloadPdfFlag, stripDownloadFlag } from '@/lib/claudeImport';
+import { ClaudeImportPanel } from '@/components/layout/ClaudeImportPanel';
 import type { StatusState } from '@/lib/jsonLoadState';
 
 type PreviewMode = 'pdf' | 'json';
@@ -78,6 +88,8 @@ export default function HomePage() {
   const [hashStatus, setHashStatus] = useState<StatusState>('idle');
   const [hashMessage, setHashMessage] = useState('');
   const loadAttemptsRef = useRef({ latest: 0, lastHashPayload: null as string | null });
+  // Armed by ?download=pdf or the Claude tab; fires once when the loaded resume finishes compiling
+  const autoDownloadRef = useRef(false);
 
   const {
     resume,
@@ -96,8 +108,16 @@ export default function HomePage() {
     applyLinkVerification,
   } = useResumeStore();
 
-  const { pdfUrl, isCompiling, error, downloadPdf, compile, pdfRoundTrip, isExtracting } =
-    useLatexCompile(resume, currentTemplate, 1000, true);
+  const {
+    pdfUrl,
+    isCompiling,
+    error,
+    downloadPdf,
+    compile,
+    pdfRoundTrip,
+    isExtracting,
+    settledResume,
+  } = useLatexCompile(resume, currentTemplate, 1000, true);
   const { isSaving, lastSaved } = useAutoSave(resume);
 
   const beginLoadAttempt = useCallback(() => {
@@ -118,12 +138,17 @@ export default function HomePage() {
   useEffect(() => {
     const clearHashFragment = () => {
       const { pathname, search } = window.location;
-      window.history.replaceState(null, '', `${pathname}${search}`);
+      window.history.replaceState(null, '', `${pathname}${stripDownloadFlag(search)}`);
     };
 
     const handleHash = () => {
       const fragment = parseHashFragment(window.location.hash);
-      if (fragment.kind !== 'payload') return;
+      const wantsDownload = hasDownloadPdfFlag(window.location.search);
+      if (fragment.kind !== 'payload') {
+        // A stray ?download=pdf without a payload must never trigger a download later
+        if (wantsDownload) clearHashFragment();
+        return;
+      }
       if (fragment.payload === loadAttemptsRef.current.lastHashPayload) {
         clearHashFragment();
         return;
@@ -142,6 +167,7 @@ export default function HomePage() {
       }
 
       importResume(result.resume);
+      autoDownloadRef.current = wantsDownload;
       setHashStatus('idle');
       setHashMessage('');
       markExternalLoad();
@@ -151,6 +177,23 @@ export default function HomePage() {
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, [beginLoadAttempt, commitIfCurrent, importResume, markExternalLoad]);
+
+  useEffect(() => {
+    if (!autoDownloadRef.current || isCompiling || settledResume !== resume) return;
+    autoDownloadRef.current = false;
+    if (pdfUrl && !error) downloadPdf();
+  }, [resume, settledResume, isCompiling, pdfUrl, error, downloadPdf]);
+
+  const handleLoadFromClaude = useCallback(
+    (loadedResume: Resume, shouldDownloadPdf: boolean) => {
+      importResume(loadedResume);
+      autoDownloadRef.current = shouldDownloadPdf;
+      setHashStatus('idle');
+      setHashMessage('');
+      markExternalLoad();
+    },
+    [importResume, markExternalLoad]
+  );
 
   const runWithJsonErrorGuard = useCallback(
     (action: () => void) => {
@@ -294,6 +337,15 @@ export default function HomePage() {
       );
     }
 
+    if (activeView === 'claude') {
+      return (
+        <ClaudeImportPanel
+          resume={resume}
+          onLoadResume={handleLoadFromClaude}
+        />
+      );
+    }
+
     if (activeView === 'saved') {
       return <SavedResumesPanel onLoadResume={handleLoadSavedResume} />;
     }
@@ -411,6 +463,13 @@ export default function HomePage() {
             onClick={() => handleMobileViewChange('parse')}
             icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}
             label="Parse"
+            controlsId="mobile-workspace-panel"
+          />
+          <ViewToggleButton
+            isActive={mobileView === 'claude'}
+            onClick={() => handleMobileViewChange('claude')}
+            icon={<Sparkles className="h-4 w-4" aria-hidden="true" />}
+            label="Claude"
             controlsId="mobile-workspace-panel"
           />
           <SignedIn>
