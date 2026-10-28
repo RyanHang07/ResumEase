@@ -28,7 +28,7 @@ export interface TailorGuardResult {
   techStackAdded: Array<{ location: string; items: string[] }>;
 }
 
-const EM_DASH = '—';
+const EM_DASH = '\u2014';
 const METRIC = /\$?\d+(?:[.,]\d+)*\+?(?:\s?(?:%|x\b|ms\b|k\b))?/gi;
 
 const FROZEN_ENTRY_FIELDS = [

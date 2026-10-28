@@ -45,3 +45,5 @@ next-env.d.ts
 
 #docs
 /docs/**
+!/docs/resume-tailor/
+!/docs/resume-tailor/**

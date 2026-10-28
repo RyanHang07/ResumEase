@@ -74,13 +74,17 @@ Shape:
     entry: { id, role, organization, title, dates: { start: "YYYY-MM", end: "YYYY-MM" | "present" },
              techStack[], links[{ label: "repo"|"demo"|"paper"|"pr"|"other", url }], coursework[], bulletPoints[] }
   - type "skills": { id, sectionName, order, categories[{ id, categoryName, skills[] }] }
-- jobTarget (optional): { company, role, jdText }
+- jobTarget: { company, role, jdText }. Set these to the posting (jdText = the posting's plain text)
+  so the app can grade fit and name the file.
 - lastModified: ISO date string
 
 Rules:
 - Never invent ids. Reuse existing ids; new items may use any unique string.
 - Plain text only in bullets. No markdown, no LaTeX.
 - The compiled PDF must fit on one page.
+- If the user pinned a base resume, the app checks your JSON against it: header, ids, dates, titles,
+  orgs, links and order unchanged; same bullet counts; no bullet longer than the base; every metric
+  kept; skills and techStack only added (5 skills max); no em dashes.
 
 How to hand it back (either works):
 1. A single \`\`\`json code block with the full resume. The user pastes it into the Claude tab.
