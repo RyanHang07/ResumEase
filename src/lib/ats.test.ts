@@ -205,7 +205,6 @@ describe('analyzeResumeForAts', () => {
     const withJd = {
       ...resume,
       jobTarget: { company: 'Acme', role: 'Intern', jdText: 'Need TypeScript' },
-      coverLetter: 'Dear team…',
     };
     const afterJd = analyzeResumeForAts(withJd, 'classic');
     expect(afterJd.score).toBe(before.score);

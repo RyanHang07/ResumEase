@@ -3,6 +3,7 @@ import {
   Resume,
   Header,
   Section,
+  RESUME_NAME_MAX_LENGTH,
   createDefaultStandardSection,
   createDefaultSkillsSection,
 } from '@/types/resume';
@@ -20,7 +21,7 @@ interface ResumeStore {
   removeSection: (sectionId: string) => void;
   reorderSections: (sections: Section[]) => void;
   updateJobTarget: (jobTarget: Resume['jobTarget']) => void;
-  updateCoverLetter: (coverLetter: string | undefined) => void;
+  updateName: (name: string) => void;
   applyParserFixes: () => void;
   applyLinkVerification: (results: Array<{ url: string; ok: boolean }>) => void;
   importResume: (resume: Resume) => void;
@@ -100,11 +101,11 @@ export const useResumeStore = create<ResumeStore>()((set) => ({
       },
     })),
 
-  updateCoverLetter: (coverLetter) =>
+  updateName: (name) =>
     set((state) => ({
       resume: {
         ...state.resume,
-        coverLetter,
+        name: name.slice(0, RESUME_NAME_MAX_LENGTH) || undefined,
         lastModified: new Date(),
       },
     })),

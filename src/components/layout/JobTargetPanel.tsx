@@ -1,11 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Copy, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import type { Resume } from '@/types/resume';
 import { analyzeJdGap } from '@/lib/jobTarget';
-import { buildCoverLetterMarkdown } from '@/lib/coverLetter';
-import { getEntryPrimaryText } from '@/lib/resumeDisplay';
+import { FitCheck } from '@/components/layout/FitCheck';
+import { MAX_SAVED_RESUMES } from '@/lib/savedResumes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,20 +15,14 @@ interface JobTargetPanelProps {
   resume: Resume;
   templateId: string;
   onUpdateJobTarget: (jobTarget: Resume['jobTarget']) => void;
-  onUpdateCoverLetter: (coverLetter: string | undefined) => void;
 }
 
 export const JobTargetPanel = ({
   resume,
   templateId,
   onUpdateJobTarget,
-  onUpdateCoverLetter,
 }: JobTargetPanelProps) => {
   const jobTarget = resume.jobTarget ?? { company: '', role: '', jdText: '' };
-  const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
-  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
-  const [referrer, setReferrer] = useState('');
-  const [warnings, setWarnings] = useState<string[]>([]);
   const [saveMessage, setSaveMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -37,57 +31,11 @@ export const JobTargetPanel = ({
     [resume, jobTarget.jdText]
   );
 
-  const selectableEntries = useMemo(() => {
-    const items: Array<{ id: string; label: string }> = [];
-    for (const section of resume.sections) {
-      if (section.type !== 'standard') continue;
-      for (const entry of section.entries) {
-        const label = getEntryPrimaryText(entry, section.sectionName);
-        if (!label) continue;
-        items.push({ id: entry.id, label: `${section.sectionName}: ${label}` });
-      }
-    }
-    return items.slice(0, 12);
-  }, [resume.sections]);
-
   const handleFieldChange = (field: 'company' | 'role' | 'jdText', value: string) => {
     onUpdateJobTarget({
       ...jobTarget,
       [field]: value,
     });
-  };
-
-  const handleToggleEntry = (entryId: string) => {
-    setSelectedEntryIds((current) => {
-      if (current.includes(entryId)) {
-        return current.filter((id) => id !== entryId);
-      }
-      if (current.length >= 3) return current;
-      return [...current, entryId];
-    });
-  };
-
-  const handleToggleKeyword = (token: string) => {
-    setSelectedKeywords((current) =>
-      current.includes(token)
-        ? current.filter((item) => item !== token)
-        : [...current, token].slice(0, 6)
-    );
-  };
-
-  const handleGenerateLetter = () => {
-    const result = buildCoverLetterMarkdown(resume, {
-      entryIds: selectedEntryIds,
-      keywords: selectedKeywords,
-      referrer,
-    });
-    onUpdateCoverLetter(result.markdown);
-    setWarnings(result.warnings);
-  };
-
-  const handleCopyLetter = async () => {
-    if (!resume.coverLetter?.trim()) return;
-    await navigator.clipboard.writeText(resume.coverLetter);
   };
 
   const handleDuplicateForJd = async () => {
@@ -112,7 +60,7 @@ export const JobTargetPanel = ({
       });
 
       if (response.status === 401) {
-        setSaveMessage('Sign in to save a tailored copy (max 5 saves).');
+        setSaveMessage('Sign in to save a tailored copy.');
         return;
       }
 
@@ -121,7 +69,7 @@ export const JobTargetPanel = ({
         setSaveMessage(
           typeof payload.error === 'string'
             ? payload.error
-            : 'Could not save tailored copy. At 5 saves, replace an old one first.'
+            : `Could not save tailored copy. At ${MAX_SAVED_RESUMES} saves, delete an old one first.`
         );
         return;
       }
@@ -137,11 +85,11 @@ export const JobTargetPanel = ({
   return (
     <section
       className="mb-6 rounded-lg border bg-card p-4 text-card-foreground shadow-sm"
-      aria-label="Target job and cover letter"
+      aria-label="Target job"
     >
       <h3 className="text-sm font-semibold">Target job</h3>
       <p className="mt-1 text-xs text-muted-foreground">
-        Paste a JD for literal keyword gaps. Duplicate saves a cloud copy with this target (max 5).
+        Paste a JD for literal keyword gaps. Duplicate saves a cloud copy with this target.
       </p>
 
       <div className="mt-3 grid grid-cols-1 gap-3">
@@ -178,6 +126,8 @@ export const JobTargetPanel = ({
         </div>
       </div>
 
+      {jobTarget.jdText.trim() && <FitCheck resume={resume} jdText={jobTarget.jdText} />}
+
       {jobTarget.jdText.trim() && (
         <div className="mt-3 space-y-2 text-xs">
           <p>
@@ -190,38 +140,28 @@ export const JobTargetPanel = ({
               <p className="font-medium">Literal misses</p>
               <div className="mt-1 flex flex-wrap gap-1">
                 {gap.misses.slice(0, 20).map((token) => (
-                  <button
+                  <span
                     key={token}
-                    type="button"
-                    className="rounded border px-1.5 py-0.5 text-[11px] hover:bg-muted"
-                    onClick={() => handleToggleKeyword(token)}
-                    aria-pressed={selectedKeywords.includes(token)}
-                    tabIndex={0}
+                    className="rounded border px-1.5 py-0.5 text-[11px]"
                   >
                     {token}
-                    {selectedKeywords.includes(token) ? ' ✓' : ''}
-                  </button>
+                  </span>
                 ))}
               </div>
             </div>
           )}
           {gap.hits.length > 0 && (
             <div>
-              <p className="font-medium">Present keywords (click to echo)</p>
+              <p className="font-medium">Present keywords</p>
               <div className="mt-1 flex flex-wrap gap-1">
                 {gap.hits.slice(0, 16).map((hit) => (
-                  <button
+                  <span
                     key={hit.token}
-                    type="button"
-                    className="rounded border px-1.5 py-0.5 text-[11px] hover:bg-muted"
-                    onClick={() => handleToggleKeyword(hit.token)}
-                    aria-pressed={selectedKeywords.includes(hit.token)}
-                    tabIndex={0}
+                    className="rounded border px-1.5 py-0.5 text-[11px]"
                   >
                     {hit.token}
                     {hit.inBullets ? '' : hit.inSkills ? ' (skills)' : ''}
-                    {selectedKeywords.includes(hit.token) ? ' ✓' : ''}
-                  </button>
+                  </span>
                 ))}
               </div>
             </div>
@@ -229,59 +169,7 @@ export const JobTargetPanel = ({
         </div>
       )}
 
-      <div className="mt-4 space-y-2">
-        <p className="text-xs font-medium">Cover letter evidence (pick up to 3)</p>
-        <ul className="max-h-28 space-y-1 overflow-y-auto text-xs">
-          {selectableEntries.map((item) => (
-            <li key={item.id}>
-              <label className="flex cursor-pointer items-start gap-2">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={selectedEntryIds.includes(item.id)}
-                  onChange={() => handleToggleEntry(item.id)}
-                  aria-label={`Include ${item.label}`}
-                />
-                <span>{item.label}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-        <div className="space-y-1.5">
-          <Label htmlFor="referrer">Referrer (optional)</Label>
-          <Input
-            id="referrer"
-            value={referrer}
-            onChange={(e) => setReferrer(e.target.value)}
-            placeholder="Alex at Acme"
-            tabIndex={0}
-          />
-        </div>
-      </div>
-
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={handleGenerateLetter}
-          aria-label="Generate cover letter from selected slots"
-          tabIndex={0}
-        >
-          Generate letter
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={handleCopyLetter}
-          disabled={!resume.coverLetter?.trim()}
-          aria-label="Copy cover letter markdown"
-          tabIndex={0}
-        >
-          <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-          Copy
-        </Button>
         <Button
           type="button"
           size="sm"
@@ -295,20 +183,8 @@ export const JobTargetPanel = ({
         </Button>
       </div>
 
-      {warnings.length > 0 && (
-        <ul className="mt-2 space-y-1 text-xs text-amber-700">
-          {warnings.map((warning) => (
-            <li key={warning}>{warning}</li>
-          ))}
-        </ul>
-      )}
       {saveMessage && <p className="mt-2 text-xs text-muted-foreground">{saveMessage}</p>}
 
-      {resume.coverLetter?.trim() && (
-        <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded border bg-muted/40 p-2 text-[11px]">
-          {resume.coverLetter}
-        </pre>
-      )}
     </section>
   );
 };

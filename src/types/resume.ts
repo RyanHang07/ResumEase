@@ -1,4 +1,5 @@
 export const CURRENT_SCHEMA_VERSION = 2 as const;
+export const RESUME_NAME_MAX_LENGTH = 80;
 export type SchemaVersion = typeof CURRENT_SCHEMA_VERSION;
 export type IconMode = 'none' | 'icon' | 'icon-and-text';
 export type EntryLinkLabel = 'repo' | 'demo' | 'paper' | 'pr' | 'other';
@@ -97,10 +98,11 @@ export interface JobTarget {
 export interface Resume {
   schemaVersion: SchemaVersion;
   id: string;
+  /** Drives export filenames and the cloud save name, e.g. "Ryan-Hang_Acme_SWE". */
+  name?: string;
   header: Header;
   sections: Section[];
   lastModified: Date;
-  coverLetter?: string;
   jobTarget?: JobTarget;
 }
 

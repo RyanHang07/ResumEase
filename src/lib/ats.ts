@@ -480,16 +480,11 @@ const buildChecklist = (
         return coverage.unbacked.length / coverage.total <= 0.4;
       })(),
     },
-    // ponytail: JD/letter are workflow checklist only — they must not feed the parse score
+    // ponytail: JD is a workflow checklist item only; it must not feed the parse score
     {
       id: 'job-target',
       label: 'Target job description is set',
       pass: Boolean(resume.jobTarget?.jdText?.trim()),
-    },
-    {
-      id: 'cover-letter',
-      label: 'Cover letter drafted for the target',
-      pass: Boolean(resume.coverLetter?.trim()),
     },
   ];
 };

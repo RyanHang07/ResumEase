@@ -17,6 +17,7 @@ import {
   getHeaderContactPlainLines,
 } from '@/lib/resumeDisplay';
 import { normalizeSectionName } from '@/lib/templates/shared';
+import { resumeFilename } from '@/lib/resumeFilename';
 
 const NAME_SIZE = 40;
 const CONTACT_SIZE = 22;
@@ -220,7 +221,7 @@ export const downloadDocx = async (resume: Resume): Promise<void> => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `resume-${new Date().toISOString().split('T')[0]}.docx`;
+  link.download = resumeFilename(resume, 'docx');
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

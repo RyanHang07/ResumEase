@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
+import { RESUME_NAME_MAX_LENGTH } from '@/types/resume';
 import { UserProfileButton } from './UserProfileButton';
 import {
   DropdownMenu,
@@ -41,6 +42,9 @@ interface ToolbarProps {
   onClearAll: () => void;
   isPdfReady: boolean;
   isDocxExporting?: boolean;
+  resumeName: string;
+  resumeNamePlaceholder: string;
+  onRenameResume: (name: string) => void;
 }
 
 export const Toolbar = ({
@@ -52,6 +56,9 @@ export const Toolbar = ({
   onClearAll,
   isPdfReady,
   isDocxExporting = false,
+  resumeName,
+  resumeNamePlaceholder,
+  onRenameResume,
 }: ToolbarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -83,6 +90,24 @@ export const Toolbar = ({
           <h1 className="truncate text-lg font-bold sm:text-xl">ResumEase</h1>
           <span className="hidden text-xs text-muted-foreground sm:inline">
             Latex-based resume with ease.
+          </span>
+        </div>
+        <div className="flex min-w-0 flex-col border-l pl-3">
+          <label htmlFor="resume-name-field" className="text-[11px] text-muted-foreground">
+            File name
+          </label>
+          <input
+            id="resume-name-field"
+            value={resumeName}
+            onChange={(e) => onRenameResume(e.target.value)}
+            placeholder={resumeNamePlaceholder}
+            maxLength={RESUME_NAME_MAX_LENGTH}
+            className="w-40 min-w-0 truncate rounded-sm bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring sm:w-64"
+            aria-describedby="resume-name-hint"
+            spellCheck={false}
+          />
+          <span id="resume-name-hint" className="sr-only">
+            Used for exported file names and the cloud save name.
           </span>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { Resume } from '@/types/resume';
+import { resumeFilename } from '@/lib/resumeFilename';
 import {
   generateClassicLatex,
   generateCompactLatex,
@@ -36,7 +37,7 @@ export const downloadLatexSource = (resume: Resume, templateId: string = 'classi
 
   const link = document.createElement('a');
   link.href = url;
-  link.download = `resume-${resolved}-${new Date().toISOString().split('T')[0]}.tex`;
+  link.download = resumeFilename(resume, 'tex');
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

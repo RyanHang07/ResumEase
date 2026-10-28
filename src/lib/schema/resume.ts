@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   CURRENT_SCHEMA_VERSION,
+  RESUME_NAME_MAX_LENGTH,
   type Resume,
 } from '@/types/resume';
 
@@ -85,10 +86,10 @@ const headerSchema = z.object({
 export const resumeSchema = z.object({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
   id: z.string().min(1),
+  name: z.string().max(RESUME_NAME_MAX_LENGTH).optional(),
   header: headerSchema,
   sections: z.array(z.union([standardSectionSchema, skillsSectionSchema])),
   lastModified: z.coerce.date(),
-  coverLetter: z.string().optional(),
   jobTarget: z
     .object({
       company: z.string(),

@@ -1,5 +1,6 @@
 import {
   CURRENT_SCHEMA_VERSION,
+  RESUME_NAME_MAX_LENGTH,
   type Header,
   type IconMode,
   type Resume,
@@ -262,12 +263,13 @@ export const migrateResume = (value: unknown): Resume => {
   const migrated: Resume = relocateEducationMetaFromHeader({
     schemaVersion: CURRENT_SCHEMA_VERSION,
     id: asString(value.id, createId('resume')),
+    // ponytail: truncate instead of throwing so an overlong name never blocks an import
+    name: asString(value.name).trim().slice(0, RESUME_NAME_MAX_LENGTH) || undefined,
     header: migrateHeader(value.header),
     sections: value.sections.map((section, index) =>
       migrateSection(section, index, alreadyV2)
     ),
     lastModified: value.lastModified ? new Date(value.lastModified as string) : new Date(),
-    coverLetter: asString(value.coverLetter) || undefined,
     jobTarget: isRecord(value.jobTarget)
       ? {
           company: asString(value.jobTarget.company),

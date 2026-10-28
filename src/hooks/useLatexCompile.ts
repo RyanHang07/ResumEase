@@ -5,6 +5,7 @@ import { Resume } from '@/types/resume';
 import { extractPdfText } from '@/lib/pdfExtract';
 import { analyzePdfRoundTrip } from '@/lib/pdfRoundTrip';
 import type { PdfRoundTripResult } from '@/lib/pdfRoundTrip';
+import { resumeFilename } from '@/lib/resumeFilename';
 
 interface UseLatexCompileReturn {
   pdfUrl: string | null;
@@ -12,6 +13,8 @@ interface UseLatexCompileReturn {
   error: string | null;
   pdfRoundTrip: PdfRoundTripResult | null;
   isExtracting: boolean;
+  /** The resume object the latest finished compile (success or failure) was built from. */
+  settledResume: Resume | null;
   compile: () => Promise<void>;
   downloadPdf: () => void;
 }
@@ -27,6 +30,7 @@ export const useLatexCompile = (
   const [error, setError] = useState<string | null>(null);
   const [pdfRoundTrip, setPdfRoundTrip] = useState<PdfRoundTripResult | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [settledResume, setSettledResume] = useState<Resume | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousUrlRef = useRef<string | null>(null);
   const compileRequestRef = useRef(0);
@@ -67,6 +71,7 @@ export const useLatexCompile = (
       previousUrlRef.current = url;
 
       setPdfUrl(url);
+      setSettledResume(resume);
 
       const extractId = extractRequestRef.current + 1;
       extractRequestRef.current = extractId;
@@ -89,6 +94,7 @@ export const useLatexCompile = (
       if (compileRequestRef.current !== requestId) return;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
+      setSettledResume(resume);
       console.error('LaTeX compilation error:', err);
     } finally {
       if (compileRequestRef.current === requestId) {
@@ -139,11 +145,11 @@ export const useLatexCompile = (
 
     const link = document.createElement('a');
     link.href = pdfUrl;
-    link.download = `resume-${new Date().toISOString().split('T')[0]}.pdf`;
+    link.download = resumeFilename(resume, 'pdf');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [pdfUrl]);
+  }, [pdfUrl, resume]);
 
   return {
     pdfUrl,
@@ -151,6 +157,7 @@ export const useLatexCompile = (
     error,
     pdfRoundTrip,
     isExtracting,
+    settledResume,
     compile,
     downloadPdf,
   };
